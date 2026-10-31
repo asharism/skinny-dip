@@ -6,3 +6,4 @@ DerivedData/
 *.xcuserstate
 *.xcodeproj/
 SkinnyDip/Info.plist
+node_modules/
