@@ -1,0 +1,62 @@
+name: SkinnyDip
+options:
+  bundleIdPrefix: com.hitesh
+  deploymentTarget:
+    macOS: "26.0"
+    iOS: "26.0"
+  createIntermediateGroups: true
+
+packages:
+  MarkdownCore:
+    path: Packages/MarkdownCore
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  SkinnyDip:
+    type: application
+    supportedDestinations: [macOS, iOS]
+    sources:
+      - path: SkinnyDip
+    dependencies:
+      - package: MarkdownCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hitesh.SkinnyDip
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Skinny Dip
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_USER_SELECTED_FILES: readwrite
+        CODE_SIGN_STYLE: Automatic
+        "CODE_SIGN_IDENTITY[sdk=macosx*]": "-"
+    info:
+      path: SkinnyDip/Info.plist
+      properties:
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Markdown Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Default
+            LSItemContentTypes: [net.daringfireball.markdown]
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: net.daringfireball.markdown
+            UTTypeDescription: Markdown Document
+            UTTypeConformsTo: [public.plain-text]
+            UTTypeTagSpecification:
+              public.filename-extension: [md, markdown]
+              public.mime-type: [text/markdown]
+        LSSupportsOpeningDocumentsInPlace: true
+        UISupportsDocumentBrowser: true
+
+schemes:
+  SkinnyDip:
+    build:
+      targets:
+        SkinnyDip: all
+    test:
+      targets:
+        - package: MarkdownCore/MarkdownCoreTests
