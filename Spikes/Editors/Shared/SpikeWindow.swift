@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 /// Common chrome for every editor spike: the editor fills the window, and a
