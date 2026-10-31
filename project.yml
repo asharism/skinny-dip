@@ -22,6 +22,11 @@ targets:
     supportedDestinations: [macOS, iOS]
     sources:
       - path: SkinnyDip
+        excludes:
+          - Editor/web/**
+      - path: SkinnyDip/Resources
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: MarkdownCore
     settings:

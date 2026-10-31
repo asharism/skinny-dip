@@ -2,15 +2,26 @@ import SwiftUI
 
 struct ContentView: View {
     @Binding var document: MarkdownDocument
-    @State private var selection: TextSelection?
+    #if os(macOS)
+    @State private var selection: Range<String.Index>?
+    #else
+    @State private var textSelection: TextSelection?
+    #endif
 
     var body: some View {
-        // Placeholder until the editor spike (issue #1) picks the real editor.
-        TextEditor(text: $document.source, selection: $selection)
+        #if os(macOS)
+        EditorView(text: $document.source, selection: $selection)
+            .focusedSceneValue(\.copySource, CopySource(
+                markdown: document.source,
+                selection: selection
+            ))
+        #else
+        TextEditor(text: $document.source, selection: $textSelection)
             .font(.body.monospaced())
             .focusedSceneValue(\.copySource, CopySource(
                 markdown: document.source,
-                selection: selection?.range(in: document.source)
+                selection: textSelection?.range(in: document.source)
             ))
+        #endif
     }
 }
