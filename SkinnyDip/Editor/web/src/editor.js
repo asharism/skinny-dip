@@ -157,7 +157,10 @@ function extensions() {
       if (suppressBridge) return;
       if (update.docChanged) {
         const immediate = update.transactions.some(
-          (tr) => tr.isUserEvent("undo") || tr.isUserEvent("redo"),
+          (tr) =>
+            tr.isUserEvent("undo") ||
+            tr.isUserEvent("redo") ||
+            tr.isUserEvent("input.paste"),
         );
         post({
           event: "documentChanged",
@@ -226,11 +229,12 @@ window.editorCut = () => {
 };
 
 window.insertText = (text) => {
-  const { from, to } = view.state.selection.main;
-  view.dispatch({
-    changes: { from, to, insert: text },
-    userEvent: "input.paste",
-  });
+  const changes = view.state.selection.ranges.map((range) => ({
+    from: range.from,
+    to: range.to,
+    insert: text,
+  }));
+  view.dispatch({ changes, userEvent: "input.paste" });
   view.focus();
   return true;
 };

@@ -187,19 +187,21 @@ final class EditorWebView: WKWebView {
     }
 
     @objc func paste(_ sender: Any?) {
-        let pasteboard = NSPasteboard.general
-        if let markdown = pasteboard.string(forType: .skinnyDipMarkdown), !markdown.isEmpty {
-            Task { @MainActor in
-                _ = try? await callAsyncJavaScript(
-                    "return insertText(text)",
-                    arguments: ["text": markdown],
-                    contentWorld: .page
-                )
-            }
-            return
-        }
-        if let next = nextResponder, next.responds(to: #selector(paste(_:))) {
-            next.perform(#selector(paste(_:)), with: sender)
+        insertResolvedPaste(PasteAsMarkdown.insertText(from: NSPasteboard.general.pasteboardContents))
+    }
+
+    @objc func pasteAsPlainText(_ sender: Any?) {
+        insertResolvedPaste(PasteAsMarkdown.plainInsertText(from: NSPasteboard.general.pasteboardContents))
+    }
+
+    private func insertResolvedPaste(_ text: String?) {
+        guard let text else { return }
+        Task { @MainActor in
+            _ = try? await callAsyncJavaScript(
+                "return insertText(text)",
+                arguments: ["text": text],
+                contentWorld: .page
+            )
         }
     }
 
