@@ -215,5 +215,25 @@ window.editorRedo = () => {
   return true;
 };
 
+window.editorCut = () => {
+  const changes = view.state.selection.ranges
+    .map((range) => ({ from: range.from, to: range.to, insert: "" }))
+    .filter((change) => change.from !== change.to);
+  if (changes.length === 0) return false;
+  view.dispatch({ changes, userEvent: "cut" });
+  view.focus();
+  return true;
+};
+
+window.insertText = (text) => {
+  const { from, to } = view.state.selection.main;
+  view.dispatch({
+    changes: { from, to, insert: text },
+    userEvent: "input.paste",
+  });
+  view.focus();
+  return true;
+};
+
 window.editorView = view;
 post({ event: "editorReady" });
