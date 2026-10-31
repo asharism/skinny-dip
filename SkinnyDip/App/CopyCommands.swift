@@ -19,6 +19,13 @@ struct CopyCommands: Commands {
                 .disabled(!(historyMenuState?.canRedo ?? false))
         }
 
+        CommandGroup(after: .toolbar) {
+            Button("Toggle Preview") {
+                NotificationCenter.default.post(name: .togglePreview, object: nil)
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+        }
+
         // Replacing the group drops the system Cut, Paste and friends too, so they
         // come back here as first-responder actions, which every text view handles.
         CommandGroup(replacing: .pasteboard) {
