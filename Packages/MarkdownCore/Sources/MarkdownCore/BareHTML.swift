@@ -3,7 +3,7 @@ import Markdown
 /// Renders Markdown Source to Bare HTML: structure only, no `class`, `style`,
 /// `font` or color attributes. See GLOSSARY.md and docs/adr/0001.
 public enum BareHTML {
-    public static func render(_ source: String) -> String {
+    public static func render(_ source: String, options: RenderOptions = .default) -> String {
         var renderer = Renderer()
         return renderer.visit(Document(parsing: source))
     }
