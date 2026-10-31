@@ -1,0 +1,31 @@
+name: CodeMirrorSpike
+options:
+  bundleIdPrefix: com.hitesh.SkinnyDip.spike
+  deploymentTarget:
+    macOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+targets:
+  CodeMirrorSpike:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+      - path: ../Shared
+      - path: Resources
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hitesh.SkinnyDip.spike.codemirror
+        PRODUCT_NAME: CodeMirrorSpike
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: CodeMirror Spike
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: NO
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"

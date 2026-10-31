@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>CodeMirror spike</title>
+<style>
+  :root { color-scheme: light dark; --bg: #ffffff; --fg: #1d1d1f; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1e1e1e; --fg: #e4e4e4; } }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); }
+  #editor { height: 100%; }
+  .cm-editor { background: var(--bg); color: var(--fg); }
+  .cm-editor.cm-focused { outline: none; }
+  @media (prefers-color-scheme: dark) {
+    .cm-editor .cm-cursor { border-left-color: #e4e4e4; }
+    .cm-editor .cm-gutters { background: #252526; color: #858585; border-right-color: #333; }
+    .cm-editor .cm-activeLine { background: #ffffff0a; }
+    .cm-editor .cm-activeLineGutter { background: #ffffff10; }
+    .cm-editor.cm-focused .cm-selectionBackground,
+    .cm-editor .cm-selectionBackground { background: #264f78 !important; }
+    .cm-editor .cm-selectionMatch { background: #3a3d41; }
+    .cm-editor .cm-panels { background: #252526; color: var(--fg); }
+  }
+</style>
+</head>
+<body>
+<div id="editor"></div>
+<script src="editor.bundle.js"></script>
+</body>
+</html>
