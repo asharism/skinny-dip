@@ -1,0 +1,3 @@
+# Bare HTML on the clipboard, no style inlining
+
+Copy as Rich Text writes Bare HTML (plus the Markdown source) and never inlines computed styles, so a paste takes on the destination's fonts and heading styles instead of looking like Skinny Dip's preview. We rejected the inliner approach (an `inliner.js` running in the preview, as codeink does) because it bakes the preview's theme into every email and document, ties copy to the WebView, and fights Word/Outlook's own heading styles. Consequence: pasted code blocks are plain monospace without syntax colors. Revisit only if the paste matrix shows a Tier 1 Paste Target that falls apart without styles.
