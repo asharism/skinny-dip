@@ -1,0 +1,32 @@
+name: STTextViewSpike
+options:
+  bundleIdPrefix: com.hitesh.SkinnyDip.spike
+  deploymentTarget:
+    macOS: "26.0"
+packages:
+  STTextView:
+    url: https://github.com/krzyzanowskim/STTextView
+    from: 2.4.1
+targets:
+  STTextViewSpike:
+    type: application
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Sources
+      - path: ../Shared
+    dependencies:
+      - package: STTextView
+        product: STTextView
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hitesh.SkinnyDip.spike.sttextview
+        PRODUCT_NAME: STTextViewSpike
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: STTextView Spike
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        MACOSX_DEPLOYMENT_TARGET: "26.0"
