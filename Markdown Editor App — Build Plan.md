@@ -185,8 +185,8 @@ Seven phases, each closed by a testable gate. P2 is the payoff: write, ⌘C, pas
 - [ ] Sign in with Apple ID in Xcode (free personal team is enough to run on your Mac and own iPhone; not needed for the Mac build, which signs ad hoc)
 - [x] Create multiplatform app `SkinnyDip` (`com.hitesh.SkinnyDip`) via XcodeGen `project.yml`; local package `MarkdownCore`; `swift-markdown` 0.9.0
 - [x] Declare `.md` document type (`net.daringfireball.markdown`) in Info.plist
-- [x] First red test: `# Hello` renders `<h1>Hello</h1>` (fails: renderer returns "")
-- [ ] User reviews the test; then implement until green
+- [x] First red test: `# Hello` renders `<h1>Hello</h1>`
+- [x] Test reviewed; green
 
 ## Risks and open questions
 
