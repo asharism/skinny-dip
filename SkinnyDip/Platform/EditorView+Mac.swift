@@ -1,4 +1,5 @@
 #if os(macOS)
+import AppKit
 import MarkdownCore
 import SwiftUI
 import WebKit
@@ -47,6 +48,7 @@ struct EditorView: NSViewRepresentable {
                 )
             }
         }
+        webView.editorCoordinator = context.coordinator
         context.coordinator.webView = webView
 
         guard let resources = Bundle.main.resourceURL?.appendingPathComponent("Resources"),
@@ -163,6 +165,7 @@ final class EditorWebView: WKWebView {
     var onSelectAll: (() -> Void)?
     var onUndo: (() -> Void)?
     var onRedo: (() -> Void)?
+    weak var editorCoordinator: EditorView.Coordinator?
 
     override func selectAll(_ sender: Any?) {
         if let onSelectAll {
@@ -172,12 +175,123 @@ final class EditorWebView: WKWebView {
         }
     }
 
+    @objc func copy(_ sender: Any?) {
+        writeRichTextToPasteboard()
+    }
+
+    @objc func cut(_ sender: Any?) {
+        writeRichTextToPasteboard()
+        Task { @MainActor in
+            _ = try? await callAsyncJavaScript("return editorCut()", contentWorld: .page)
+        }
+    }
+
+    @objc func paste(_ sender: Any?) {
+        let pasteboard = NSPasteboard.general
+        if let markdown = pasteboard.string(forType: .skinnyDipMarkdown), !markdown.isEmpty {
+            Task { @MainActor in
+                _ = try? await callAsyncJavaScript(
+                    "return insertText(text)",
+                    arguments: ["text": markdown],
+                    contentWorld: .page
+                )
+            }
+            return
+        }
+        if let next = nextResponder, next.responds(to: #selector(paste(_:))) {
+            next.perform(#selector(paste(_:)), with: sender)
+        }
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.type == .keyDown, event.modifierFlags.contains(.command),
+              event.charactersIgnoringModifiers?.lowercased() == "c"
+        else {
+            return super.performKeyEquivalent(with: event)
+        }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if flags.contains(.shift) {
+            writeMarkdownToPasteboard()
+            return true
+        }
+        if flags.contains(.option) {
+            writeHTMLToPasteboard()
+            return true
+        }
+        copy(nil)
+        return true
+    }
+
+    override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
+        super.willOpenMenu(menu, with: event)
+        customizeCopyMenu(menu)
+    }
+
     @objc func skinnyDipUndo(_ sender: Any?) {
         onUndo?()
     }
 
     @objc func skinnyDipRedo(_ sender: Any?) {
         onRedo?()
+    }
+
+    @objc func skinyDipCopyMarkdown(_ sender: Any?) {
+        writeMarkdownToPasteboard()
+    }
+
+    @objc func skinyDipCopyHTML(_ sender: Any?) {
+        writeHTMLToPasteboard()
+    }
+
+    private func copySource() -> (markdown: String, selection: Range<String.Index>?) {
+        guard let coordinator = editorCoordinator else { return ("", nil) }
+        let markdown = coordinator.lastEditorText ?? coordinator.parent.text
+        return (markdown, coordinator.parent.selection)
+    }
+
+    private func writeRichTextToPasteboard() {
+        let source = copySource()
+        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection)
+    }
+
+    private func writeMarkdownToPasteboard() {
+        let source = copySource()
+        CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection)
+    }
+
+    private func writeHTMLToPasteboard() {
+        let source = copySource()
+        CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection)
+    }
+
+    private func customizeCopyMenu(_ menu: NSMenu) {
+        guard let copyIndex = menu.items.firstIndex(where: { isCopyMenuItem($0) }) else { return }
+        let copyItem = menu.items[copyIndex]
+        copyItem.title = "Copy as Rich Text"
+        copyItem.target = self
+        copyItem.action = #selector(copy(_:))
+
+        let markdownItem = NSMenuItem(
+            title: "Copy as Markdown",
+            action: #selector(skinyDipCopyMarkdown(_:)),
+            keyEquivalent: ""
+        )
+        markdownItem.target = self
+        menu.insertItem(markdownItem, at: copyIndex + 1)
+
+        let htmlItem = NSMenuItem(
+            title: "Copy as HTML",
+            action: #selector(skinyDipCopyHTML(_:)),
+            keyEquivalent: ""
+        )
+        htmlItem.target = self
+        menu.insertItem(htmlItem, at: copyIndex + 2)
+    }
+
+    private func isCopyMenuItem(_ item: NSMenuItem) -> Bool {
+        item.action == #selector(copy(_:))
+            || item.action == #selector(NSText.copy(_:))
+            || item.title == "Copy"
     }
 }
 #endif
