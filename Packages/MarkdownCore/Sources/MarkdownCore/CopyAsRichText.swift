@@ -46,3 +46,19 @@ public enum CopyAsRichText {
             .map(String.init)
     }
 }
+
+public enum CopyAsMarkdown {
+    /// The selected Markdown Source exactly as typed, or the whole document when
+    /// `selection` is empty.
+    public static func text(for source: String, selection: Range<String.Index>? = nil) -> String {
+        ""
+    }
+}
+
+public enum CopyAsHTML {
+    /// The Bare HTML that Copy as Rich Text would paste, without its document
+    /// wrapper, for pasting as HTML source.
+    public static func text(for source: String, selection: Range<String.Index>? = nil, options: RenderOptions = .default) -> String {
+        ""
+    }
+}
