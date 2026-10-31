@@ -6,5 +6,12 @@ struct SkinnyDipApp: App {
         DocumentGroup(newDocument: MarkdownDocument()) { file in
             ContentView(document: file.$document)
         }
+        #if os(macOS)
+        .commands { CopyCommands() }
+        #endif
+
+        #if os(macOS)
+        Settings { SettingsView() }
+        #endif
     }
 }
