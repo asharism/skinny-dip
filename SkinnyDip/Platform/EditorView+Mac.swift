@@ -7,6 +7,8 @@ import WebKit
 struct EditorView: NSViewRepresentable {
     @Binding var text: String
     @Binding var selection: Range<String.Index>?
+    @Binding var canUndo: Bool
+    @Binding var canRedo: Bool
 
     private static let editDebounceNanoseconds: UInt64 = 200_000_000
 
@@ -25,6 +27,22 @@ struct EditorView: NSViewRepresentable {
             Task { @MainActor in
                 _ = try? await webView?.callAsyncJavaScript(
                     "return selectAllDocument()",
+                    contentWorld: .page
+                )
+            }
+        }
+        webView.onUndo = { [weak webView] in
+            Task { @MainActor in
+                _ = try? await webView?.callAsyncJavaScript(
+                    "return editorUndo()",
+                    contentWorld: .page
+                )
+            }
+        }
+        webView.onRedo = { [weak webView] in
+            Task { @MainActor in
+                _ = try? await webView?.callAsyncJavaScript(
+                    "return editorRedo()",
                     contentWorld: .page
                 )
             }
@@ -83,6 +101,8 @@ struct EditorView: NSViewRepresentable {
                     contentWorld: .page
                 )
                 lastEditorText = text
+                parent.canUndo = false
+                parent.canRedo = false
                 applySelection(from: 0, to: 0, rangeCount: 1)
             } catch {
                 // WebKit failed; binding still holds the Markdown Source.
@@ -98,12 +118,22 @@ struct EditorView: NSViewRepresentable {
             case "documentChanged":
                 guard let newText = body["text"] as? String else { return }
                 lastEditorText = newText
+                let immediate = body["immediate"] as? Bool ?? false
                 debounceTask?.cancel()
+                if immediate {
+                    parent.text = newText
+                    return
+                }
                 debounceTask = Task { @MainActor in
                     try? await Task.sleep(nanoseconds: EditorView.editDebounceNanoseconds)
                     guard !Task.isCancelled else { return }
                     parent.text = newText
                 }
+            case "historyChanged":
+                let canUndo = body["canUndo"] as? Bool ?? false
+                let canRedo = body["canRedo"] as? Bool ?? false
+                parent.canUndo = canUndo
+                parent.canRedo = canRedo
             case "selectionChanged":
                 let from = body["from"] as? Int ?? 0
                 let to = body["to"] as? Int ?? 0
@@ -128,9 +158,11 @@ struct EditorView: NSViewRepresentable {
     }
 }
 
-/// Select All from the Edit menu must reach CodeMirror, not WebKit's viewport-limited default.
+/// Edit menu Select All must reach CodeMirror, not WebKit's viewport-limited default.
 final class EditorWebView: WKWebView {
     var onSelectAll: (() -> Void)?
+    var onUndo: (() -> Void)?
+    var onRedo: (() -> Void)?
 
     override func selectAll(_ sender: Any?) {
         if let onSelectAll {
@@ -138,6 +170,14 @@ final class EditorWebView: WKWebView {
         } else {
             super.selectAll(sender)
         }
+    }
+
+    @objc func skinnyDipUndo(_ sender: Any?) {
+        onUndo?()
+    }
+
+    @objc func skinnyDipRedo(_ sender: Any?) {
+        onRedo?()
     }
 }
 #endif

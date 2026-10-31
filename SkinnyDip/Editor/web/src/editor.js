@@ -1,11 +1,50 @@
 // CodeMirror 6 editor for Skinny Dip (Mac). Bundled into SkinnyDip/Resources/editor.bundle.js.
-import { basicSetup } from "codemirror";
-import { EditorView, keymap, rectangularSelection } from "@codemirror/view";
+import {
+  lineNumbers,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  drawSelection,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  highlightActiveLine,
+  keymap,
+  EditorView,
+} from "@codemirror/view";
 import { EditorState, Compartment, Prec } from "@codemirror/state";
-import { addCursorAbove, addCursorBelow } from "@codemirror/commands";
+import {
+  foldGutter,
+  indentOnInput,
+  syntaxHighlighting,
+  defaultHighlightStyle,
+  bracketMatching,
+  foldKeymap,
+  HighlightStyle,
+} from "@codemirror/language";
+import {
+  history,
+  defaultKeymap,
+  historyKeymap,
+  addCursorAbove,
+  addCursorBelow,
+  undo,
+  redo,
+  undoDepth,
+  redoDepth,
+} from "@codemirror/commands";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import {
+  closeBrackets,
+  autocompletion,
+  closeBracketsKeymap,
+  completionKeymap,
+} from "@codemirror/autocomplete";
+import { lintKeymap } from "@codemirror/lint";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags as t } from "@lezer/highlight";
+
+// Keep in sync with MarkdownCore `EditorUndoGrouping.newGroupDelayMilliseconds`.
+const UNDO_GROUP_MS = 750;
 
 function post(message) {
   try {
@@ -47,6 +86,37 @@ const baseTheme = EditorView.theme({
   },
 });
 
+function codeMirrorSetup() {
+  return [
+    lineNumbers(),
+    highlightActiveLineGutter(),
+    highlightSpecialChars(),
+    history({ newGroupDelay: UNDO_GROUP_MS }),
+    foldGutter(),
+    drawSelection(),
+    dropCursor(),
+    EditorState.allowMultipleSelections.of(true),
+    indentOnInput(),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    bracketMatching(),
+    closeBrackets(),
+    autocompletion(),
+    rectangularSelection(),
+    crosshairCursor(),
+    highlightActiveLine(),
+    highlightSelectionMatches(),
+    keymap.of([
+      ...closeBracketsKeymap,
+      ...defaultKeymap,
+      ...searchKeymap,
+      ...historyKeymap,
+      ...foldKeymap,
+      ...completionKeymap,
+      ...lintKeymap,
+    ]),
+  ];
+}
+
 let suppressBridge = false;
 
 function reportSelection(view) {
@@ -59,10 +129,18 @@ function reportSelection(view) {
   });
 }
 
+function reportHistory(view) {
+  post({
+    event: "historyChanged",
+    canUndo: undoDepth(view.state) > 0,
+    canRedo: redoDepth(view.state) > 0,
+  });
+}
+
 function extensions() {
   return [
     sublimeKeys,
-    basicSetup,
+    codeMirrorSetup(),
     markdown({ base: markdownLanguage }),
     EditorView.lineWrapping,
     EditorState.allowMultipleSelections.of(true),
@@ -78,10 +156,20 @@ function extensions() {
     EditorView.updateListener.of((update) => {
       if (suppressBridge) return;
       if (update.docChanged) {
-        post({ event: "documentChanged", text: update.state.doc.toString() });
+        const immediate = update.transactions.some(
+          (tr) => tr.isUserEvent("undo") || tr.isUserEvent("redo"),
+        );
+        post({
+          event: "documentChanged",
+          text: update.state.doc.toString(),
+          immediate,
+        });
       }
       if (update.selectionSet || update.docChanged) {
         reportSelection(update.view);
+      }
+      if (update.docChanged || update.transactions.some((tr) => tr.isUserEvent("undo") || tr.isUserEvent("redo"))) {
+        reportHistory(update.view);
       }
     }),
   ];
@@ -102,6 +190,7 @@ window.setDocument = (text) => {
     view.setState(EditorState.create({ doc: text, extensions: extensions() }));
     view.focus();
     reportSelection(view);
+    reportHistory(view);
   } finally {
     suppressBridge = false;
   }
@@ -113,6 +202,16 @@ window.selectAllDocument = () => {
   view.dispatch({ selection: { anchor: 0, head: len } });
   view.focus();
   reportSelection(view);
+  return true;
+};
+
+window.editorUndo = () => {
+  undo(view);
+  return true;
+};
+
+window.editorRedo = () => {
+  redo(view);
   return true;
 };
 

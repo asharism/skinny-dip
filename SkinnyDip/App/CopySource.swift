@@ -9,8 +9,15 @@ struct CopySource {
     var selection: Range<String.Index>?
 }
 
+/// Undo/redo menu state for the CodeMirror editor (Edit ▸ Undo/Redo).
+struct EditorHistoryMenuState {
+    var canUndo: Bool
+    var canRedo: Bool
+}
+
 extension FocusedValues {
     @Entry var copySource: CopySource?
+    @Entry var editorHistoryMenuState: EditorHistoryMenuState?
 }
 
 extension TextSelection {
