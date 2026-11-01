@@ -20,6 +20,7 @@ import {
   bracketMatching,
   foldKeymap,
   HighlightStyle,
+  indentUnit,
 } from "@codemirror/language";
 import {
   history,
@@ -31,6 +32,7 @@ import {
   redo,
   undoDepth,
   redoDepth,
+  indentWithTab,
 } from "@codemirror/commands";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import {
@@ -41,6 +43,7 @@ import {
 } from "@codemirror/autocomplete";
 import { lintKeymap } from "@codemirror/lint";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { languages } from "@codemirror/language-data";
 import { tags as t } from "@lezer/highlight";
 
 // Keep in sync with MarkdownCore `EditorUndoGrouping.newGroupDelayMilliseconds`.
@@ -59,23 +62,38 @@ const sublimeKeys = Prec.highest(
   ]),
 );
 
-const darkHighlight = HighlightStyle.define([
-  { tag: t.heading, fontWeight: "bold", color: "#7cb7ff" },
-  { tag: [t.strong], fontWeight: "bold" },
-  { tag: [t.emphasis], fontStyle: "italic" },
-  { tag: t.strikethrough, textDecoration: "line-through" },
-  { tag: [t.link, t.url], color: "#8fd3ff", textDecoration: "underline" },
-  { tag: [t.monospace], color: "#e6b673" },
-  { tag: [t.keyword, t.processingInstruction], color: "#c792ea" },
-  { tag: [t.string], color: "#c3e88d" },
-  { tag: [t.number, t.atom, t.bool], color: "#f78c6c" },
-  { tag: [t.comment, t.meta, t.contentSeparator, t.quote], color: "#8a93a5" },
-  { tag: [t.list], color: "#d0d0d0" },
+const lightHighlight = HighlightStyle.define([
+  { tag: t.heading, fontWeight: "bold", color: "#1f2328" },
+  { tag: [t.strong], fontWeight: "bold", color: "#1f2328" },
+  { tag: [t.emphasis], fontStyle: "italic", color: "#1f2328" },
+  { tag: t.strikethrough, textDecoration: "line-through", color: "#656d76" },
+  { tag: [t.link, t.url], color: "#0969da", textDecoration: "underline" },
+  { tag: [t.monospace], color: "#cf222e", backgroundColor: "#f6f8fa" },
+  { tag: [t.keyword, t.processingInstruction], color: "#8250df" },
+  { tag: [t.string], color: "#0a3069" },
+  { tag: [t.number, t.atom, t.bool], color: "#0550ae" },
+  { tag: [t.comment, t.meta, t.contentSeparator, t.quote], color: "#656d76" },
+  { tag: [t.list], color: "#1f2328" },
 ]);
 
-const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+const darkHighlight = HighlightStyle.define([
+  { tag: t.heading, fontWeight: "bold", color: "#e6edf3" },
+  { tag: [t.strong], fontWeight: "bold", color: "#e6edf3" },
+  { tag: [t.emphasis], fontStyle: "italic", color: "#e6edf3" },
+  { tag: t.strikethrough, textDecoration: "line-through", color: "#8b949e" },
+  { tag: [t.link, t.url], color: "#4493f8", textDecoration: "underline" },
+  { tag: [t.monospace], color: "#ff7b72", backgroundColor: "#161b22" },
+  { tag: [t.keyword, t.processingInstruction], color: "#d2a8ff" },
+  { tag: [t.string], color: "#a5d6ff" },
+  { tag: [t.number, t.atom, t.bool], color: "#79c0ff" },
+  { tag: [t.comment, t.meta, t.contentSeparator, t.quote], color: "#8b949e" },
+  { tag: [t.list], color: "#e6edf3" },
+]);
+
+const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const highlight = new Compartment();
-const highlightFor = (dark) => (dark ? syntaxHighlighting(darkHighlight) : []);
+const highlightFor = (dark) =>
+  syntaxHighlighting(dark ? darkHighlight : lightHighlight);
 
 const baseTheme = EditorView.theme({
   "&": { height: "100%" },
@@ -97,6 +115,7 @@ function codeMirrorSetup() {
     dropCursor(),
     EditorState.allowMultipleSelections.of(true),
     indentOnInput(),
+    indentUnit.of("  "),
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     bracketMatching(),
     closeBrackets(),
@@ -113,6 +132,7 @@ function codeMirrorSetup() {
       ...foldKeymap,
       ...completionKeymap,
       ...lintKeymap,
+      indentWithTab,
     ]),
   ];
 }
@@ -121,11 +141,13 @@ let suppressBridge = false;
 
 function reportSelection(view) {
   const main = view.state.selection.main;
+  const hasSelection = view.state.selection.ranges.some((r) => r.from !== r.to);
   post({
     event: "selectionChanged",
     from: main.from,
     to: main.to,
     rangeCount: view.state.selection.ranges.length,
+    hasSelection,
   });
 }
 
@@ -141,7 +163,10 @@ function extensions() {
   return [
     sublimeKeys,
     codeMirrorSetup(),
-    markdown({ base: markdownLanguage }),
+    markdown({
+      base: markdownLanguage,
+      codeLanguages: languages,
+    }),
     EditorView.lineWrapping,
     EditorState.allowMultipleSelections.of(true),
     rectangularSelection(),
@@ -152,7 +177,7 @@ function extensions() {
       writingsuggestions: "true",
     }),
     baseTheme,
-    highlight.of(highlightFor(darkQuery.matches)),
+    highlight.of(highlightFor(colorSchemeQuery.matches)),
     EditorView.updateListener.of((update) => {
       if (suppressBridge) return;
       if (update.docChanged) {
@@ -180,7 +205,7 @@ const view = new EditorView({
   parent: document.getElementById("editor"),
 });
 
-darkQuery.addEventListener("change", (e) => {
+colorSchemeQuery.addEventListener("change", (e) => {
   view.dispatch({ effects: highlight.reconfigure(highlightFor(e.matches)) });
 });
 
