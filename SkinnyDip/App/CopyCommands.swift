@@ -8,30 +8,49 @@ import MarkdownCore
 /// what the app is for; the plain system Copy would paste unformatted Markdown.
 struct CopyCommands: Commands {
     @FocusedValue(\.copySource) private var source
-    var clipboard: any Clipboard = MacClipboard()
-
+    @FocusedValue(\.editorHistoryMenuState) private var historyMenuState
+    @FocusedValue(\.editorPasteboardMenuState) private var pasteboardMenuState
     var body: some Commands {
+        CommandGroup(replacing: .undoRedo) {
+            Button("Undo") { send(Self.undoSelector) }
+                .keyboardShortcut("z")
+                .disabled(!(historyMenuState?.canUndo ?? false))
+            Button("Redo") { send(Self.redoSelector) }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+                .disabled(!(historyMenuState?.canRedo ?? false))
+        }
+
+        CommandGroup(after: .toolbar) {
+            Button("Toggle Preview") {
+                NotificationCenter.default.post(name: .togglePreview, object: nil)
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+        }
+
         // Replacing the group drops the system Cut, Paste and friends too, so they
         // come back here as first-responder actions, which every text view handles.
         CommandGroup(replacing: .pasteboard) {
             Button("Cut") { send(#selector(NSText.cut(_:))) }
                 .keyboardShortcut("x")
+                .disabled(!(pasteboardMenuState?.canCut ?? true))
             Button("Copy as Rich Text", action: copyAsRichText)
                 .keyboardShortcut("c")
+                .disabled(!(pasteboardMenuState?.canCopy ?? true))
             Button("Copy as Markdown") {
                 guard let source else { return }
-                clipboard.write(plainText: CopyAsMarkdown.text(for: source.markdown, selection: source.selection))
+                CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection)
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .disabled(source == nil)
             Button("Copy as HTML") {
                 guard let source else { return }
-                clipboard.write(plainText: CopyAsHTML.text(for: source.markdown, selection: source.selection, options: RenderSettings.options()))
+                CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection)
             }
             .keyboardShortcut("c", modifiers: [.command, .option])
             .disabled(source == nil)
             Button("Paste") { send(#selector(NSText.paste(_:))) }
                 .keyboardShortcut("v")
+                .disabled(!(pasteboardMenuState?.canPaste ?? true))
             Button("Paste and Match Style") { send(#selector(NSTextView.pasteAsPlainText(_:))) }
                 .keyboardShortcut("v", modifiers: [.command, .option, .shift])
             Button("Delete") { send(#selector(NSText.delete(_:))) }
@@ -44,11 +63,14 @@ struct CopyCommands: Commands {
     /// to the system Copy, so copying still works everywhere.
     private func copyAsRichText() {
         guard let source else { return send(#selector(NSText.copy(_:))) }
-        clipboard.write(CopyAsRichText.payload(for: source.markdown, selection: source.selection, options: RenderSettings.options()))
+        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection)
     }
 
     private func send(_ action: Selector) {
         NSApp.sendAction(action, to: nil, from: nil)
     }
+
+    private static let undoSelector = Selector("skinyDipUndo:")
+    private static let redoSelector = Selector("skinyDipRedo:")
 }
 #endif

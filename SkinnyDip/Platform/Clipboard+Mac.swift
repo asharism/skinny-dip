@@ -26,4 +26,12 @@ struct MacClipboard: Clipboard {
 extension NSPasteboard.PasteboardType {
     static let skinnyDipMarkdown = Self(ClipboardType.skinnyDipMarkdown)
 }
+
+extension NSPasteboard {
+    var canPasteFromPasteboard: Bool {
+        if let markdown = string(forType: .skinnyDipMarkdown), !markdown.isEmpty { return true }
+        if let plain = string(forType: .string), !plain.isEmpty { return true }
+        return false
+    }
+}
 #endif
