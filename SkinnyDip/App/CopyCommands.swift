@@ -9,8 +9,6 @@ import MarkdownCore
 struct CopyCommands: Commands {
     @FocusedValue(\.copySource) private var source
     @FocusedValue(\.editorHistoryMenuState) private var historyMenuState
-    var clipboard: any Clipboard = MacClipboard()
-
     var body: some Commands {
         CommandGroup(replacing: .undoRedo) {
             Button("Undo") { send(Self.undoSelector) }
@@ -30,13 +28,13 @@ struct CopyCommands: Commands {
                 .keyboardShortcut("c")
             Button("Copy as Markdown") {
                 guard let source else { return }
-                clipboard.write(plainText: CopyAsMarkdown.text(for: source.markdown, selection: source.selection))
+                CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection)
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .disabled(source == nil)
             Button("Copy as HTML") {
                 guard let source else { return }
-                clipboard.write(plainText: CopyAsHTML.text(for: source.markdown, selection: source.selection, options: RenderSettings.options()))
+                CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection)
             }
             .keyboardShortcut("c", modifiers: [.command, .option])
             .disabled(source == nil)
@@ -54,7 +52,7 @@ struct CopyCommands: Commands {
     /// to the system Copy, so copying still works everywhere.
     private func copyAsRichText() {
         guard let source else { return send(#selector(NSText.copy(_:))) }
-        clipboard.write(CopyAsRichText.payload(for: source.markdown, selection: source.selection, options: RenderSettings.options()))
+        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection)
     }
 
     private func send(_ action: Selector) {
