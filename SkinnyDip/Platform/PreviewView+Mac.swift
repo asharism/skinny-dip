@@ -16,17 +16,18 @@ struct PreviewView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> PreviewWebView {
         let configuration = WKWebViewConfiguration()
-        let webView = PreviewWebView(frame: .zero, configuration: configuration)
+        let webView = PreviewWebView(
+            frame: NSRect(x: 0, y: 0, width: 640, height: 480),
+            configuration: configuration
+        )
+        webView.autoresizingMask = [.width, .height]
         webView.navigationDelegate = context.coordinator
         context.coordinator.webView = webView
 
-        guard let resources = Bundle.main.resourceURL?.appendingPathComponent("Resources"),
-              FileManager.default.fileExists(atPath: resources.appendingPathComponent("preview.html").path)
-        else {
+        guard let page = WebBundleResources.page(named: "preview.html") else {
             return webView
         }
-        let page = resources.appendingPathComponent("preview.html")
-        webView.loadFileURL(page, allowingReadAccessTo: resources)
+        webView.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
         return webView
     }
 
@@ -79,6 +80,9 @@ final class PreviewWebView: WKWebView {
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if AppKeyboardShortcuts.performMainMenuShortcut(event) {
+            return true
+        }
         guard event.type == .keyDown, event.modifierFlags.contains(.command),
               event.charactersIgnoringModifiers?.lowercased() == "c"
         else {

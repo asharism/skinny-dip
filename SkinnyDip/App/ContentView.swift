@@ -35,6 +35,7 @@ struct ContentView: View {
                 editorPane
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { refreshPreview() }
         .onChange(of: document.source) { refreshPreview() }
         .onChange(of: demotesHeadings) { refreshPreview() }
@@ -62,6 +63,7 @@ struct ContentView: View {
             canRedo: $canRedo,
             hasEditorSelection: $hasEditorSelection
         )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .focusedSceneValue(\.copySource, CopySource(
             markdown: document.source,
             selection: selection

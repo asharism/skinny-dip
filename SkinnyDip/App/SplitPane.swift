@@ -18,7 +18,10 @@ struct SplitPane<Leading: View, Trailing: View>: View {
         GeometryReader { geometry in
             HStack(spacing: 0) {
                 leading()
-                    .frame(width: geometry.size.width * leadingFraction)
+                    .frame(
+                        width: max(1, geometry.size.width * leadingFraction),
+                        height: max(1, geometry.size.height)
+                    )
                 SplitHandle(isDragging: dragStartFraction != nil)
                     .gesture(
                         DragGesture(minimumDistance: 0)
@@ -33,8 +36,12 @@ struct SplitPane<Leading: View, Trailing: View>: View {
                             .onEnded { _ in dragStartFraction = nil }
                     )
                 trailing()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(
+                        width: max(1, geometry.size.width * (1 - leadingFraction) - 5),
+                        height: max(1, geometry.size.height)
+                    )
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
     }
 }

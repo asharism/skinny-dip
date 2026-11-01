@@ -23,7 +23,11 @@ struct EditorView: NSViewRepresentable {
         configuration.writingToolsBehavior = .complete
         configuration.userContentController.add(context.coordinator, name: "editor")
 
-        let webView = EditorWebView(frame: .zero, configuration: configuration)
+        let webView = EditorWebView(
+            frame: NSRect(x: 0, y: 0, width: 640, height: 480),
+            configuration: configuration
+        )
+        webView.autoresizingMask = [.width, .height]
         webView.navigationDelegate = context.coordinator
         webView.onSelectAll = { [weak webView] in
             Task { @MainActor in
@@ -51,24 +55,28 @@ struct EditorView: NSViewRepresentable {
         }
         webView.editorCoordinator = context.coordinator
         context.coordinator.webView = webView
+        #if DEBUG
+        webView.isInspectable = true
+        #endif
 
-        guard let resources = Bundle.main.resourceURL?.appendingPathComponent("Resources"),
-              FileManager.default.fileExists(atPath: resources.appendingPathComponent("editor.html").path)
-        else {
+        guard let page = WebBundleResources.page(named: "editor.html") else {
             return webView
         }
-        let page = resources.appendingPathComponent("editor.html")
-        webView.loadFileURL(page, allowingReadAccessTo: resources)
+        webView.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
         return webView
     }
 
     func updateNSView(_ webView: EditorWebView, context: Context) {
         context.coordinator.parent = self
-        guard context.coordinator.isReady else { return }
+        if !context.coordinator.isReady {
+            context.coordinator.pendingText = text
+            return
+        }
         guard text != context.coordinator.lastEditorText else { return }
         guard !context.coordinator.isApplyingRemoteEdit else { return }
+        guard !context.coordinator.isBindingSyncPending else { return }
         Task { @MainActor in
-            await context.coordinator.pushDocument(text)
+            await context.coordinator.pushDocument(text, resetSelection: false)
         }
     }
 
@@ -77,8 +85,11 @@ struct EditorView: NSViewRepresentable {
         var parent: EditorView
         weak var webView: EditorWebView?
         var isReady = false
+        var jsBridgeReady = false
         var lastEditorText: String?
+        var pendingText: String?
         var isApplyingRemoteEdit = false
+        private(set) var isBindingSyncPending = false
         private var debounceTask: Task<Void, Never>?
 
         init(parent: EditorView) {
@@ -88,12 +99,35 @@ struct EditorView: NSViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.window?.makeFirstResponder(webView)
             Task { @MainActor in
-                await pushDocument(parent.text)
-                isReady = true
+                await finishLoadingIfNeeded()
             }
         }
 
-        func pushDocument(_ text: String) async {
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error) {
+            #if DEBUG
+            print("[SkinnyDip editor] navigation failed: \(error)")
+            #endif
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error) {
+            #if DEBUG
+            print("[SkinnyDip editor] provisional navigation failed: \(error)")
+            #endif
+        }
+
+        private func finishLoadingIfNeeded() async {
+            guard !isReady, jsBridgeReady else { return }
+            isReady = true
+            let text = pendingText ?? parent.text
+            pendingText = nil
+            await pushDocument(text, resetSelection: true)
+            if let pending = pendingText, pending != lastEditorText {
+                pendingText = nil
+                await pushDocument(pending, resetSelection: true)
+            }
+        }
+
+        func pushDocument(_ text: String, resetSelection: Bool) async {
             guard let webView else { return }
             isApplyingRemoteEdit = true
             defer { isApplyingRemoteEdit = false }
@@ -106,9 +140,13 @@ struct EditorView: NSViewRepresentable {
                 lastEditorText = text
                 parent.canUndo = false
                 parent.canRedo = false
-                applySelection(from: 0, to: 0, rangeCount: 1)
+                if resetSelection {
+                    applySelection(from: 0, to: 0, rangeCount: 1)
+                }
             } catch {
-                // WebKit failed; binding still holds the Markdown Source.
+                #if DEBUG
+                fputs("[SkinnyDip editor] setDocument failed: \(error)\n", stderr)
+                #endif
             }
         }
 
@@ -118,19 +156,27 @@ struct EditorView: NSViewRepresentable {
             else { return }
 
             switch event {
+            case "editorReady":
+                jsBridgeReady = true
+                Task { @MainActor in
+                    await finishLoadingIfNeeded()
+                }
             case "documentChanged":
                 guard let newText = body["text"] as? String else { return }
                 lastEditorText = newText
                 let immediate = body["immediate"] as? Bool ?? false
                 debounceTask?.cancel()
                 if immediate {
+                    isBindingSyncPending = false
                     parent.text = newText
                     return
                 }
+                isBindingSyncPending = true
                 debounceTask = Task { @MainActor in
                     try? await Task.sleep(nanoseconds: EditorView.editDebounceNanoseconds)
                     guard !Task.isCancelled else { return }
                     parent.text = newText
+                    isBindingSyncPending = false
                 }
             case "historyChanged":
                 let canUndo = body["canUndo"] as? Bool ?? false
@@ -208,6 +254,9 @@ final class EditorWebView: WKWebView {
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if AppKeyboardShortcuts.performMainMenuShortcut(event) {
+            return true
+        }
         guard event.type == .keyDown, event.modifierFlags.contains(.command),
               event.charactersIgnoringModifiers?.lowercased() == "c"
         else {
