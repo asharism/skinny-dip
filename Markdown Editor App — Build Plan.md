@@ -135,10 +135,14 @@ MVP = the smallest app that replaces the Sublime + VS Code preview round-trip on
 - Copy as Rich Text (⌘C), Copy as Markdown (⌘⇧C), Copy as HTML (⌥⌘C)
 - Paste as Markdown (⌘V) — P4
 - Toggle preview (⌘⇧P), light/dark follows system
-- UI Shell (P5b, ADR-0005, `docs/design/ui-shell.md`): Rex-style Tab strip (one document per Tab), Editor and Preview as floating Cards (side by side or stacked, maximize, hide Preview), Copy split button with a confirmation, Card footers with render-option chips, eight themes (four light/dark pairs, Match System), editor font size
+- UI Shell (P5b, ADR-0005, `docs/design/ui-shell.md`): Rex-style Tab strip (one document per Tab), Editor and Preview as floating Cards (side by side or stacked, maximize, hide Preview), Copy split button with a confirmation, Card footers with render-option chips, eight themes (four light/dark pairs, Match System)
 - Scroll sync, one-way Editor → Preview (ADR-0006)
 - Line height 1.65 in the Editor, 1.6 in the Preview
-- Untitled document on launch (ordinary DocumentGroup document; a persistent scratchpad can come later)
+- Untitled document on launch, only when no Scratch Documents were restored
+- No save prompts, ever (ADR-0007): saved files autosave in place; never-saved documents are Scratch Documents that persist with their undo history and reopen on launch; closing one moves it to Recently Closed (⇧⌘T)
+- Undo depth of at least 10,000 steps per document
+- Duplicate (⇧⌘S, Editor header, Tab menu): an unsaved copy as a new Tab
+- Zoom the whole UI with ⌘+ / ⌘− / ⌘0, VS Code style
 
 **Out (for now)**
 
@@ -164,7 +168,7 @@ Seven phases, each closed by a testable gate. P2 is the payoff: write, ⌘C, pas
 | P3 | Live preview: `WebView`, `render(html)`, debounce, scroll kept, highlight.js | Preview updates without flashing on a 10k-line file |
 | P4 | Paste as Markdown (HTML → Markdown converter) | Golden tests for pasted Outlook/Word/web HTML |
 | P5 | Editor quality: Markdown coloring, list continuation, smart indent | Typing latency holds on a 10k-line file |
-| P5b | UI Shell: themes and Cards, Tab strip (spike first), Copy split button and footers, scroll sync, theme menu and Settings ▸ Appearance (ADR-0005, ADR-0006, `docs/design/ui-shell.md`). Starts after the P2 paste-matrix gate (#7). | Tabs switch without flashing; every theme passes the contrast test; scroll sync tracks a 10k-line file; the paste matrix is unchanged |
+| P5b | UI Shell: themes and Cards, Tab strip (spike first), Scratch Documents and no-prompt close, undo depth and Duplicate, Copy split button and footers, scroll sync, theme menu, Settings ▸ Appearance and Zoom (ADR-0005, ADR-0006, ADR-0007, `docs/design/ui-shell.md`). Starts after the P2 paste-matrix gate (#7). | Tabs switch without flashing; quitting and relaunching restores every Scratch Document with its undo history and never prompts; every theme passes the contrast test; scroll sync tracks a 10k-line file; the paste matrix is unchanged |
 | P6 | iPad/iPhone: `SplitPane`, editor/preview toggle, iOS editor and clipboard | Runs on device; paste matrix on iOS targets |
 
 **How we work it (Claude Code + TDD)**

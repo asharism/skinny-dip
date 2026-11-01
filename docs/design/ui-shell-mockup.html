@@ -151,6 +151,7 @@ const ico = {
   chev: '<path d="M4 6l4 4 4-4"/>',
   link: '<path d="M6.5 9.5l3-3M7 4.5l1-1a2.8 2.8 0 0 1 4 4l-1 1M9 11.5l-1 1a2.8 2.8 0 0 1-4-4l1-1"/>',
   plus: '<path d="M8 3v10M3 8h10"/>',
+  dup: '<rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M9.5 7.5v4M7.5 9.5h4"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/>',
   side: '<rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M10 2.5v11"/>'
 };
 const svg = (n, size = 16, stroke = 'currentColor', w = 1.5) =>
@@ -207,6 +208,7 @@ function render() {
     <div class="area" style="flex-direction:${S.dir}">
       ${showEd ? `<section class="card" aria-label="Editor" style="${card}">
         <div class="head">${svg('md', 16, t.accent)}<span class="name">${esc(d.title)}</span><span style="font-size:12px;color:${t.muted}">Markdown</span><div style="flex:1"></div>
+          <button class="ibtn" data-act="dup" aria-label="Duplicate (⇧⌘S)" title="Duplicate (⇧⌘S)" style="color:${t.muted}">${svg('dup', 15)}</button>
           <button class="ibtn" data-act="dir" aria-label="${S.dir === 'row' ? 'Stack Cards' : 'Side by side'}" title="${S.dir === 'row' ? 'Stack Cards' : 'Side by side'}" style="color:${t.muted}">${svg(S.dir === 'row' ? 'rows' : 'cols')}</button>
           <button class="ibtn" data-act="zoomEd" aria-label="${S.zoom === 'editor' ? 'Restore' : 'Maximize Editor'}" style="color:${t.muted}">${svg(S.zoom === 'editor' ? 'min' : 'max', 15)}</button>
         </div>
@@ -257,6 +259,7 @@ document.addEventListener('click', (e) => {
     case 'menu': S.menu = !S.menu; break;
     case 'sync': S.sync = !S.sync; break;
     case 'copy': return flash('rich text');
+    case 'dup': if (!DOCS[S.tab + '-copy'] && DOCS[S.tab].lines.length) { const src = DOCS[S.tab]; DOCS[S.tab + '-copy'] = { ...src, title: src.title.replace(/\.md$/, '') + ' copy', dirty: false, state: 'Not saved' }; S.tab = S.tab + '-copy'; } break;
   }
   render();
 });

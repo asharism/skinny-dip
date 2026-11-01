@@ -1,6 +1,6 @@
 # UI Shell — design spec
 
-Status: agreed Nov 1, 2026 (design session). Decisions: ADR-0005 (tabbed card shell with themes) and ADR-0006 (scroll sync). Mockup: open `docs/design/ui-shell-mockup.html` in a browser; the canvas source it was drawn from is in `docs/design/ui-shell-canvas/`. Work is tracked as phase **P5b — UI Shell** in the Build Plan.
+Status: agreed Nov 1, 2026 (design session). Decisions: ADR-0005 (tabbed card shell with themes), ADR-0006 (scroll sync) and ADR-0007 (scratch documents, no save prompts). Mockup: open `docs/design/ui-shell-mockup.html` in a browser; the canvas source it was drawn from is in `docs/design/ui-shell-canvas/`. Work is tracked as phase **P5b — UI Shell** in the Build Plan.
 
 Inspiration: Rex by Superlogical, for its tab strip, floating panes and themes. We take the *structure* and the *token shape*, not its assets or themes.
 
@@ -32,8 +32,10 @@ Inspiration: Rex by Superlogical, for its tab strip, floating panes and themes. 
 | Card | Radius 12; background `card`; 1 pt `border` ring; `shadow` |
 | Card header | 40 tall; 14 leading, 8 trailing; icon 16 tinted `accent`; title 13 pt semibold; icon buttons 28 × 28, radius 7, `muted` |
 | Card footer | 28 tall; 11.5 pt `muted`; 1 pt `border` top rule |
-| Editor text | SF Mono, 13 pt default, **line height 1.65**; horizontal padding 22 |
+| Editor text | SF Mono, 13 pt at 100% Zoom, **line height 1.65**; horizontal padding 22 |
 | Preview text | System font, the current `theme.css` sizes, **line height 1.6**; padding 6/30/20 |
+
+Every size in this spec is at 100% **Zoom** (§6a); Zoom scales all of them.
 
 The window is **opaque**: no vibrancy and no desktop showing through. The background is the theme's `windowGradient`, a 140° linear gradient from the first color to the second.
 
@@ -62,7 +64,10 @@ The same title goes into `NSWindow.title`, so the Window menu and Mission Contro
 | Action | Key or gesture |
 | --- | --- |
 | New Tab (an untitled document in this window) | ⌘T and ⌘N |
-| Close Tab | ⌘W, or the ✕ (the normal save prompt and autosave rules apply) |
+| Close Tab | ⌘W, or the ✕. **Never prompts** (§8): saved files are autosaved first; a non-empty untitled Tab goes to Recently Closed |
+| Reopen Closed Tab | ⇧⌘T (the latest); File ▸ Recently Closed lists the rest |
+| Duplicate | ⇧⌘S (File ▸ Duplicate), the Editor header button, or the Tab's right-click menu |
+| Tab right-click menu | Duplicate, Close Tab, Close Other Tabs |
 | Select tab 1–9 | ⌘1 … ⌘9 (⌘9 = last tab) |
 | Next / previous tab | ⌃Tab / ⌃⇧Tab (the native "Show Next/Previous Tab") |
 | Reorder | Drag a Tab within the strip |
@@ -74,6 +79,7 @@ The same title goes into `NSWindow.title`, so the Window menu and Mission Contro
 There are always two Cards: **Editor** and **Preview**.
 
 **Editor header:** a Markdown icon, the document title, a "Markdown" caption (`muted`), then the buttons:
+- **Duplicate** (`plus.square.on.square`): opens an untitled copy of this document as a new Tab right after this one (§8).
 - **Orientation**: side by side ↔ stacked. The icon shows the layout you'll switch *to*.
 - **Maximize/Restore**.
 
@@ -193,9 +199,17 @@ The default is **Match System** using Paper and Ink.
 - **View ▸ Theme**: Match System, a separator, the four light themes, a separator, the four dark themes. A checkmark marks the current choice. Choosing a theme pins it (`themeMode = fixed`, `themeFixed = <id>`); choosing Match System sets `themeMode = system`.
 - **Settings ▸ Appearance**:
   - "Light theme" and "Dark theme" pickers (`themeLight`, `themeDark`), used by Match System. Picking a light theme doesn't change the dark one, even though each light theme has a suggested partner.
-  - Editor font size, a stepper from 10 to 24, default 13.
+  - Zoom, a picker showing the current level, with a Reset button.
 - Settings ▸ General keeps today's three render toggles.
-- **⌘+ / ⌘− / ⌘0** (View menu) step the editor font size by 1 and reset it. Preview text scales by the same ratio. Remembered (`editorFontSize`).
+
+## 6a. Zoom
+
+VS Code style: **⌘+ / ⌘− / ⌘0** (View ▸ Zoom In / Zoom Out / Actual Size) zoom the **whole window**: Tab strip, Card headers and footers, buttons, the Editor and the Preview, all by one factor.
+
+- Levels: 50%–200% in 10% steps; ⌘0 resets to 100%. ⌘= also zooms in (the unshifted key).
+- App-wide and remembered (`uiZoom`, a Double, default 1.0). Every open window follows at once.
+- Implementation: one `zoom` value in the environment. SwiftUI metrics come from a `Metrics` struct (`metrics.titleBar = 52 * zoom`, and so on); never use hard-coded numbers in views. Fonts use `.system(size: base * zoom)`. The two web views get `--zoom` and font-size CSS variables through `setTheme`/`setZoom`, not WebKit page zoom, so CodeMirror measures lines correctly.
+- There is no separate editor font-size setting.
 
 ## 7. Settings keys
 
@@ -209,10 +223,34 @@ The default is **Match System** using Paper and Ink.
 | `themeFixed` | String | `paper` |
 | `themeLight` | String | `paper` |
 | `themeDark` | String | `ink` |
-| `editorFontSize` | Double | 13 |
+| `uiZoom` | Double | 1.0 |
+| `scratchOrder` | [String] (scratch ids in Tab order) | [] |
 | `demotesHeadings`, `bordersTables`, `newlinesAsBreaks` | Bool | `RenderOptions.default` (exist) |
 
-## 8. Out of scope here
+## 8. Documents: autosave, scratch, Recently Closed, undo, Duplicate
+
+See ADR-0007. **Skinny Dip never asks "Do you want to save?".**
+
+- **Saved files** (a file URL exists): autosaved in place as you type. This is `DocumentGroup`'s default; keep it and never show a save prompt for them. ⌘S still works and is harmless.
+- **Scratch documents** (never saved to a location the user picked):
+  - Stored by Skinny Dip at `~/Library/Application Support/Skinny Dip/Scratch/<uuid>.md`, with a sidecar `<uuid>.json` holding `{createdAt, updatedAt, tabIndex, windowIndex, undoHistory?}`. In the sandbox, that's under the app container.
+  - Written 1 s after the last edit, on Tab switch, on window close and on quit. Writes are atomic (write to a temp file, then rename).
+  - On launch, every scratch document reopens as a Tab in its old window and order, before the untitled-on-launch logic runs. That logic only adds an empty Tab when nothing was restored. This is independent of the macOS "Close windows when quitting an application" setting.
+  - ⌘S on a scratch document shows the save panel. After a successful save it becomes a saved file in the same Tab, and its scratch files are deleted.
+  - An empty scratch document is never stored.
+- **Close and quit never prompt.**
+  - Quit: saved files are already autosaved and scratch documents are flushed. No dialog.
+  - Close a saved file's Tab: autosave if edited, then close.
+  - Close a non-empty scratch Tab: move it to **Recently Closed** (`…/Scratch/Closed/`), then close.
+  - Close an empty scratch Tab: just close.
+- **Recently Closed:**
+  - File ▸ Reopen Closed Tab (⇧⌘T) reopens the most recently closed scratch document as a scratch Tab.
+  - File ▸ Recently Closed ▸ lists up to 20, newest first, titled with `DocumentTitle.suggested` and the relative close time ("Weekly status — Payments · 2 h ago").
+  - Entries older than 30 days are deleted on launch.
+- **Undo:** CodeMirror history keeps at least **10,000** undo steps per document (`history({minDepth: 10000, newGroupDelay: 750})`). For scratch documents, the history is serialized (`historyField`) into the sidecar on each write and restored on reopen, including after Reopen Closed Tab. Saved files keep history in memory only.
+- **Duplicate:** creates a new scratch document with the same text, titled "<title> copy" until edited (a saved `notes.md` gives "notes copy"; a scratch document gives "<suggested title> copy"), inserted as the Tab right after the current one, with the cursor at the start. Its undo history starts empty.
+
+## 9. Out of scope here
 
 - Two-way scroll sync.
 - Window translucency.
@@ -222,14 +260,16 @@ The default is **Match System** using Paper and Ink.
 - iPad and iPhone Tabs (P6).
 - Changing the editor gutter. Line numbers are on today and the mockup omits them; that question is still open, and these issues leave the gutter as it is.
 
-## 9. Issues
+## 10. Issues
 
 Parent: **P5b — UI Shell**. Children, in order:
 
 1. Themes and floating Cards.
 2. Tab strip (a spike, then the build).
-3. Copy split button and Card footers.
-4. Scroll sync.
-5. Theme menu, Settings ▸ Appearance and font size.
+3. Scratch documents, no-prompt close and quit, Recently Closed.
+4. Undo depth, persisted scratch history, Duplicate.
+5. Copy split button and Card footers.
+6. Scroll sync.
+7. Theme menu, Settings ▸ Appearance, Zoom.
 
 The P2 paste-matrix gate (#7) comes before P5b.
