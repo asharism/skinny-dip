@@ -9,6 +9,7 @@ import MarkdownCore
 struct CopyCommands: Commands {
     @FocusedValue(\.copySource) private var source
     @FocusedValue(\.editorHistoryMenuState) private var historyMenuState
+    @FocusedValue(\.editorPasteboardMenuState) private var pasteboardMenuState
     var body: some Commands {
         CommandGroup(replacing: .undoRedo) {
             Button("Undo") { send(Self.undoSelector) }
@@ -31,8 +32,10 @@ struct CopyCommands: Commands {
         CommandGroup(replacing: .pasteboard) {
             Button("Cut") { send(#selector(NSText.cut(_:))) }
                 .keyboardShortcut("x")
+                .disabled(!(pasteboardMenuState?.canCut ?? true))
             Button("Copy as Rich Text", action: copyAsRichText)
                 .keyboardShortcut("c")
+                .disabled(!(pasteboardMenuState?.canCopy ?? true))
             Button("Copy as Markdown") {
                 guard let source else { return }
                 CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection)
@@ -47,6 +50,7 @@ struct CopyCommands: Commands {
             .disabled(source == nil)
             Button("Paste") { send(#selector(NSText.paste(_:))) }
                 .keyboardShortcut("v")
+                .disabled(!(pasteboardMenuState?.canPaste ?? true))
             Button("Paste and Match Style") { send(#selector(NSTextView.pasteAsPlainText(_:))) }
                 .keyboardShortcut("v", modifiers: [.command, .option, .shift])
             Button("Delete") { send(#selector(NSText.delete(_:))) }

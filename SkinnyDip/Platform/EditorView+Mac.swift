@@ -10,6 +10,7 @@ struct EditorView: NSViewRepresentable {
     @Binding var selection: Range<String.Index>?
     @Binding var canUndo: Bool
     @Binding var canRedo: Bool
+    @Binding var hasEditorSelection: Bool
 
     private static let editDebounceNanoseconds: UInt64 = 200_000_000
 
@@ -140,6 +141,9 @@ struct EditorView: NSViewRepresentable {
                 let from = body["from"] as? Int ?? 0
                 let to = body["to"] as? Int ?? 0
                 let rangeCount = body["rangeCount"] as? Int ?? 1
+                if let hasSelection = body["hasSelection"] as? Bool {
+                    parent.hasEditorSelection = hasSelection
+                }
                 applySelection(from: from, to: to, rangeCount: rangeCount)
             default:
                 break
@@ -224,7 +228,55 @@ final class EditorWebView: WKWebView {
 
     override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
         super.willOpenMenu(menu, with: event)
+        NotificationCenter.default.post(name: .editorMenuWillOpen, object: nil)
         customizeCopyMenu(menu)
+        validateContextMenuPasteboardItems(menu)
+    }
+
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        switch item.action {
+        case #selector(cut(_:)):
+            let enabled = editorCanCut
+            (item as? NSMenuItem)?.isEnabled = enabled
+            return enabled
+        case #selector(copy(_:)):
+            let enabled = editorCanCopy
+            (item as? NSMenuItem)?.isEnabled = enabled
+            return enabled
+        case #selector(paste(_:)):
+            let enabled = NSPasteboard.general.canPasteFromPasteboard
+            (item as? NSMenuItem)?.isEnabled = enabled
+            return enabled
+        default:
+            break
+        }
+        return super.validateUserInterfaceItem(item)
+    }
+
+    private var editorCanCut: Bool {
+        guard let coordinator = editorCoordinator else { return false }
+        return coordinator.parent.hasEditorSelection
+    }
+
+    private var editorCanCopy: Bool {
+        guard let coordinator = editorCoordinator else { return false }
+        let markdown = coordinator.lastEditorText ?? coordinator.parent.text
+        return coordinator.parent.hasEditorSelection || !markdown.isEmpty
+    }
+
+    private func validateContextMenuPasteboardItems(_ menu: NSMenu) {
+        for item in menu.items {
+            switch item.action {
+            case #selector(cut(_:)):
+                item.isEnabled = editorCanCut
+            case #selector(copy(_:)), #selector(NSText.copy(_:)):
+                item.isEnabled = editorCanCopy
+            case #selector(paste(_:)):
+                item.isEnabled = NSPasteboard.general.canPasteFromPasteboard
+            default:
+                break
+            }
+        }
     }
 
     @objc func skinnyDipUndo(_ sender: Any?) {
