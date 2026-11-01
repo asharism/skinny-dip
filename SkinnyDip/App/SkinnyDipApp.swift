@@ -8,6 +8,23 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        EditorTextCheckerDefaults.enable()
+        object_setClass(NSApp, SkinnyDipApplication.self)
+        if let editMenu = NSApp.mainMenu?.item(withTitle: "Edit")?.submenu {
+            editMenu.delegate = EditMenuDelegate.shared
+        }
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        EditorSpellCheck.warmUp()
+        AppWritingTools.installMainMenuWritingTools()
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        AppWritingTools.installMainMenuWritingTools()
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
             _ = url.startAccessingSecurityScopedResource()

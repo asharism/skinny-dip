@@ -10,8 +10,9 @@ import {
   highlightActiveLine,
   keymap,
   EditorView,
+  ViewPlugin,
 } from "@codemirror/view";
-import { EditorState, Compartment, Prec } from "@codemirror/state";
+import { EditorState, Compartment, Prec, EditorSelection } from "@codemirror/state";
 import {
   foldGutter,
   indentOnInput,
@@ -28,6 +29,7 @@ import {
   historyKeymap,
   addCursorAbove,
   addCursorBelow,
+  emacsStyleKeymap,
   undo,
   redo,
   undoDepth,
@@ -59,7 +61,40 @@ const sublimeKeys = Prec.highest(
   keymap.of([
     { key: "Ctrl-Shift-ArrowUp", run: addCursorAbove, preventDefault: true },
     { key: "Ctrl-Shift-ArrowDown", run: addCursorBelow, preventDefault: true },
+    { mac: "Cmd-Alt-ArrowUp", run: addCursorAbove, preventDefault: true },
+    { mac: "Cmd-Alt-ArrowDown", run: addCursorBelow, preventDefault: true },
   ]),
+);
+
+const emacsKeys = Prec.highest(
+  keymap.of(
+    emacsStyleKeymap.map((binding) => ({
+      mac: binding.key,
+      run: binding.run,
+      shift: binding.shift,
+      preventDefault: true,
+    })),
+  ),
+);
+
+/** MarkEdit-style DOM attributes; CM defaults spellcheck off and resets attrs on updates. */
+const nativeTextChecker = ViewPlugin.fromClass(
+  class {
+    update(update) {
+      const dom = update.view.contentDOM;
+      if (dom.getAttribute("spellcheck") !== "true") {
+        dom.setAttribute("spellcheck", "true");
+      }
+      if (dom.getAttribute("autocorrect") !== "on") {
+        dom.setAttribute("autocorrect", "on");
+      }
+      if (dom.getAttribute("writingsuggestions") !== "true") {
+        dom.setAttribute("writingsuggestions", "true");
+      }
+      dom.removeAttribute("autocomplete");
+      dom.removeAttribute("autocapitalize");
+    }
+  },
 );
 
 const lightHighlight = HighlightStyle.define([
@@ -162,6 +197,8 @@ function reportHistory(view) {
 function extensions() {
   return [
     sublimeKeys,
+    emacsKeys,
+    nativeTextChecker,
     codeMirrorSetup(),
     markdown({
       base: markdownLanguage,
@@ -256,6 +293,25 @@ window.insertText = (text) => {
     changes: { from, to, insert: text },
     userEvent: "input.paste",
   });
+  view.focus();
+  return true;
+};
+
+window.focusEditor = () => {
+  view.focus();
+  return true;
+};
+
+window.ensureWritingToolsSelection = () => {
+  const selection = view.state.selection.main;
+  const doc = view.state.doc;
+  const { from } = doc.lineAt(selection.from);
+  const { to } = doc.lineAt(selection.to);
+  if (from === to) {
+    view.dispatch({ selection: EditorSelection.range(0, doc.length) });
+  } else {
+    view.dispatch({ selection: EditorSelection.range(from, to) });
+  }
   view.focus();
   return true;
 };

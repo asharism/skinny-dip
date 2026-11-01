@@ -19,8 +19,10 @@ struct EditorView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> EditorWebView {
+        EditorTextCheckerDefaults.enable()
         let configuration = WKWebViewConfiguration()
         configuration.writingToolsBehavior = .complete
+        configuration.allowsInlinePredictions = true
         configuration.userContentController.add(context.coordinator, name: "editor")
 
         let webView = EditorWebView(
@@ -59,10 +61,12 @@ struct EditorView: NSViewRepresentable {
         webView.isInspectable = true
         #endif
 
-        guard let page = WebBundleResources.page(named: "editor.html") else {
+        guard let page = WebBundleResources.page(named: "editor.html"),
+              let readAccess = WebBundleResources.readAccessRoot()
+        else {
             return webView
         }
-        webView.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
+        webView.loadFileURL(page, allowingReadAccessTo: readAccess)
         return webView
     }
 
@@ -121,6 +125,8 @@ struct EditorView: NSViewRepresentable {
             let text = pendingText ?? parent.text
             pendingText = nil
             await pushDocument(text, resetSelection: true)
+            webView?.window?.makeFirstResponder(webView)
+            _ = try? await webView?.callAsyncJavaScript("return focusEditor()", contentWorld: .page)
             if let pending = pendingText, pending != lastEditorText {
                 pendingText = nil
                 await pushDocument(pending, resetSelection: true)
@@ -217,6 +223,43 @@ final class EditorWebView: WKWebView {
     var onRedo: (() -> Void)?
     weak var editorCoordinator: EditorView.Coordinator?
 
+    override var acceptsFirstResponder: Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        super.mouseDown(with: event)
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became {
+            Task { @MainActor in
+                _ = try? await callAsyncJavaScript("return focusEditor()", contentWorld: .page)
+            }
+        }
+        return became
+    }
+
+    override func accessibilityRole() -> NSAccessibility.Role? {
+        .textArea
+    }
+
+    @MainActor
+    func prepareWritingToolsSelection() async {
+        _ = try? await callAsyncJavaScript(
+            "return ensureWritingToolsSelection()",
+            contentWorld: .page
+        )
+    }
+
+    @objc func openWritingTools(_ sender: Any?) {
+        Task { @MainActor in
+            await prepareWritingToolsSelection()
+            guard responds(to: AppWritingTools.webKitAction) else { return }
+            _ = perform(AppWritingTools.webKitAction, with: sender)
+        }
+    }
+
     override func selectAll(_ sender: Any?) {
         if let onSelectAll {
             onSelectAll()
@@ -257,12 +300,18 @@ final class EditorWebView: WKWebView {
         if AppKeyboardShortcuts.performMainMenuShortcut(event) {
             return true
         }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        // Returning false drops the event: AppKit already consumed it as a
+        // key-equivalent search, so CodeMirror never sees ⌃A/E/K or ⌃⇧↑/↓.
+        if event.type == .keyDown, flags.contains(.control), !flags.contains(.command) {
+            keyDown(with: event)
+            return true
+        }
         guard event.type == .keyDown, event.modifierFlags.contains(.command),
               event.charactersIgnoringModifiers?.lowercased() == "c"
         else {
             return super.performKeyEquivalent(with: event)
         }
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.shift) {
             writeMarkdownToPasteboard()
             return true
@@ -277,6 +326,7 @@ final class EditorWebView: WKWebView {
 
     override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
         super.willOpenMenu(menu, with: event)
+        AppWritingTools.ensureWritingTools(menu: menu, target: self)
         NotificationCenter.default.post(name: .editorMenuWillOpen, object: nil)
         customizeCopyMenu(menu)
         validateContextMenuPasteboardItems(menu)
