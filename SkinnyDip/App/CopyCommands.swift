@@ -48,7 +48,7 @@ struct CopyCommands: Commands {
             }
             .keyboardShortcut("c", modifiers: [.command, .option])
             .disabled(source == nil)
-            Button("Paste") { send(#selector(NSText.paste(_:))) }
+            Button("Paste as Markdown") { send(#selector(NSText.paste(_:))) }
                 .keyboardShortcut("v")
                 .disabled(!(pasteboardMenuState?.canPaste ?? true))
             Button("Paste and Match Style") { send(#selector(NSTextView.pasteAsPlainText(_:))) }
