@@ -11,6 +11,14 @@ import Testing
     #expect(!BareHTML.render(source).contains("data-lang"))
 }
 
+@Test func previewMatchesBareWithSameRenderOptions() {
+    let source = "# Title\n\n| a | b |\n|---|---|\n| 1 | 2 |\n"
+    let options = RenderOptions(demotesHeadings: true, bordersTables: true, newlinesAsBreaks: true)
+    let bare = BareHTML.render(source, options: options)
+    let preview = PreviewHTML.render(source, options: options)
+    #expect(preview == bare)
+}
+
 @Test func previewMatchesBareWhenNoLanguageFence() {
     let source = """
     ``` 
