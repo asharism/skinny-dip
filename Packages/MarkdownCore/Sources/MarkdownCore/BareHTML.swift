@@ -4,20 +4,36 @@ import Markdown
 /// `font` or color attributes. See GLOSSARY.md and docs/adr/0001.
 public enum BareHTML {
     public static func render(_ source: String, options: RenderOptions = .default) -> String {
+        HTMLRenderer.render(source, options: options, codeLanguageHints: false)
+    }
+}
+
+/// Preview-only HTML: same Bare semantics as `BareHTML`, plus `data-lang` on fenced
+/// code blocks so highlight.js can pick a language (ADR-0004). Copy never uses this path.
+public enum PreviewHTML {
+    public static func render(_ source: String, options: RenderOptions = .default) -> String {
+        HTMLRenderer.render(source, options: options, codeLanguageHints: true)
+    }
+}
+
+enum HTMLRenderer {
+    static func render(_ source: String, options: RenderOptions, codeLanguageHints: Bool) -> String {
         // Smart punctuation would turn typed quotes and dashes into curly ones (ADR-0002).
         let document = Document(parsing: source, options: .disableSmartOpts)
-        var renderer = Renderer(options: options)
+        var renderer = Renderer(options: options, codeLanguageHints: codeLanguageHints)
         return renderer.visit(document)
     }
 }
 
 private struct Renderer: MarkupVisitor {
     let options: RenderOptions
+    let codeLanguageHints: Bool
     private var isInsideLink = false
     private var tableAlignments: [Table.ColumnAlignment?] = []
 
-    init(options: RenderOptions) {
+    init(options: RenderOptions, codeLanguageHints: Bool) {
         self.options = options
+        self.codeLanguageHints = codeLanguageHints
     }
 
     mutating func defaultVisit(_ markup: any Markup) -> String {
@@ -44,8 +60,11 @@ private struct Renderer: MarkupVisitor {
     }
 
     mutating func visitCodeBlock(_ codeBlock: CodeBlock) -> String {
+        if codeLanguageHints, let language = codeBlock.language, !language.isEmpty {
+            return "<pre><code data-lang=\"\(escape(language))\">\(escape(codeBlock.code))</code></pre>"
+        }
         // No language class: Bare HTML carries no `class` attributes.
-        "<pre><code>\(escape(codeBlock.code))</code></pre>"
+        return "<pre><code>\(escape(codeBlock.code))</code></pre>"
     }
 
     mutating func visitThematicBreak(_ thematicBreak: ThematicBreak) -> String {
