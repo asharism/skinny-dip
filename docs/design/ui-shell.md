@@ -262,14 +262,14 @@ See ADR-0007. **Skinny Dip never asks "Do you want to save?".**
 
 ## 10. Issues
 
-Parent: **P5b — UI Shell**. Children, in order:
+Parent: **#37 P5b — UI Shell**. Children, in order:
 
-1. Themes and floating Cards.
-2. Tab strip (a spike, then the build).
-3. Scratch documents, no-prompt close and quit, Recently Closed.
-4. Undo depth, persisted scratch history, Duplicate.
-5. Copy split button and Card footers.
-6. Scroll sync.
-7. Theme menu, Settings ▸ Appearance, Zoom.
+1. #38 Themes and floating Cards.
+2. #39 Tab strip (a spike, then the build).
+3. #40 Scratch Documents, no-prompt close and quit, Recently Closed.
+4. #41 Undo depth, persisted scratch history, Duplicate.
+5. #42 Copy split button and Card footers.
+6. #43 Scroll Sync.
+7. #44 Theme menu, Settings ▸ Appearance, Zoom.
 
 The P2 paste-matrix gate (#7) comes before P5b.

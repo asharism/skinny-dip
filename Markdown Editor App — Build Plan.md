@@ -168,7 +168,7 @@ Seven phases, each closed by a testable gate. P2 is the payoff: write, ⌘C, pas
 | P3 | Live preview: `WebView`, `render(html)`, debounce, scroll kept, highlight.js | Preview updates without flashing on a 10k-line file |
 | P4 | Paste as Markdown (HTML → Markdown converter) | Golden tests for pasted Outlook/Word/web HTML |
 | P5 | Editor quality: Markdown coloring, list continuation, smart indent | Typing latency holds on a 10k-line file |
-| P5b | UI Shell: themes and Cards, Tab strip (spike first), Scratch Documents and no-prompt close, undo depth and Duplicate, Copy split button and footers, scroll sync, theme menu, Settings ▸ Appearance and Zoom (ADR-0005, ADR-0006, ADR-0007, `docs/design/ui-shell.md`). Starts after the P2 paste-matrix gate (#7). | Tabs switch without flashing; quitting and relaunching restores every Scratch Document with its undo history and never prompts; every theme passes the contrast test; scroll sync tracks a 10k-line file; the paste matrix is unchanged |
+| P5b | UI Shell (#37): themes and Cards, Tab strip (spike first), Scratch Documents and no-prompt close, undo depth and Duplicate, Copy split button and footers, scroll sync, theme menu, Settings ▸ Appearance and Zoom (ADR-0005, ADR-0006, ADR-0007, `docs/design/ui-shell.md`). Starts after the P2 paste-matrix gate (#7). | Tabs switch without flashing; quitting and relaunching restores every Scratch Document with its undo history and never prompts; every theme passes the contrast test; scroll sync tracks a 10k-line file; the paste matrix is unchanged |
 | P6 | iPad/iPhone: `SplitPane`, editor/preview toggle, iOS editor and clipboard | Runs on device; paste matrix on iOS targets |
 
 **How we work it (Claude Code + TDD)**
