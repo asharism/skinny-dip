@@ -126,7 +126,11 @@ private struct Renderer: MarkupVisitor {
 
     mutating func visitTable(_ table: Table) -> String {
         tableAlignments = table.columnAlignments
-        let border = options.bordersTables ? " border=\"1\"" : ""
+        // `border="1"` alone pastes as a beveled double rule with no padding.
+        // Collapse the gap and draw one solid line; `cellpadding` is the padding Word and Outlook keep.
+        let border = options.bordersTables
+            ? " border=\"1\" cellspacing=\"0\" cellpadding=\"6\" style=\"border-collapse:collapse;border:1px solid #000\""
+            : ""
         return "<table\(border)>\n\(visitBlocks(of: table))\n</table>"
     }
 
@@ -151,7 +155,8 @@ private struct Renderer: MarkupVisitor {
             case .right: " align=\"right\""
             case nil: ""
             }
-            return "<\(tag)\(align)>\(visitChildren(of: cell))</\(tag)>"
+            let grid = options.bordersTables ? " style=\"border:1px solid #000\"" : ""
+            return "<\(tag)\(align)\(grid)>\(visitChildren(of: cell))</\(tag)>"
         }.joined(separator: "\n")
     }
 

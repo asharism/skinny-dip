@@ -15,7 +15,7 @@ struct SettingsView: View {
             Text("Copies every heading one level down, so a top heading doesn’t dominate an email.")
                 .font(.caption).foregroundStyle(.secondary)
             Toggle("Table borders", isOn: $bordersTables)
-            Text("Outlook and Word show tables without grid lines otherwise.")
+            Text("A single-line grid with padding. Outlook and Word show tables without it otherwise.")
                 .font(.caption).foregroundStyle(.secondary)
             Toggle("Newlines as line breaks", isOn: $newlinesAsBreaks)
             Text("Keeps “Thanks,⏎Hitesh” on two lines. Off joins lines as CommonMark does.")

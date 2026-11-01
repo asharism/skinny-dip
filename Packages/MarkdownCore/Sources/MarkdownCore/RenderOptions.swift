@@ -3,7 +3,7 @@
 public struct RenderOptions: Sendable, Equatable {
     /// Heading Demotion: every heading moves down one level; `h6` stays `h6`.
     public var demotesHeadings: Bool
-    /// Adds the structural `border="1"` attribute to tables.
+    /// Draws a single 1px solid table grid with cell padding.
     public var bordersTables: Bool
     /// Renders every newline inside a paragraph as `<br>`, not CommonMark's space.
     public var newlinesAsBreaks: Bool
