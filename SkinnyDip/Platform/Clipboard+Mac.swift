@@ -26,27 +26,4 @@ struct MacClipboard: Clipboard {
 extension NSPasteboard.PasteboardType {
     static let skinnyDipMarkdown = Self(ClipboardType.skinnyDipMarkdown)
 }
-
-extension NSPasteboard {
-    var pasteboardContents: PasteboardContents {
-        let html: String?
-        if let data = data(forType: .html) {
-            html = String(decoding: data, as: UTF8.self)
-        } else {
-            html = nil
-        }
-        return PasteboardContents(
-            skinnyDipMarkdown: string(forType: .skinnyDipMarkdown),
-            html: html,
-            plainText: string(forType: .string)
-        )
-    }
-
-    var canPasteFromPasteboard: Bool {
-        if let markdown = string(forType: .skinnyDipMarkdown), !markdown.isEmpty { return true }
-        if data(forType: .html) != nil { return true }
-        if let plain = string(forType: .string), !plain.isEmpty { return true }
-        return false
-    }
-}
 #endif
