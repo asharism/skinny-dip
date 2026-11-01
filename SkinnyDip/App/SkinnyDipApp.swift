@@ -7,6 +7,12 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         true
     }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            _ = url.startAccessingSecurityScopedResource()
+        }
+    }
 }
 #endif
 
