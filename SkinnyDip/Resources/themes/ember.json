@@ -1,0 +1,38 @@
+{
+  "id": "ember",
+  "name": "Ember",
+  "appearance": "dark",
+  "pair": "apricot",
+  "background": "#15100d",
+  "foreground": "#e0d0c4",
+  "cursor": "#f0955c",
+  "cursorText": "#15100d",
+  "selectionBackground": "#3e2a1e",
+  "selectionForeground": "#e0d0c4",
+  "ansi": [
+    "#1c2230",
+    "#e5737a",
+    "#b9cf86",
+    "#e0c070",
+    "#f4a86f",
+    "#d6b4e0",
+    "#8fc0dd",
+    "#e0d0c4",
+    "#736358",
+    "#e5737a",
+    "#b9cf86",
+    "#e0c070",
+    "#f4a86f",
+    "#d6b4e0",
+    "#8fc0dd",
+    "#f2f2f2"
+  ],
+  "skinnyDip": {
+    "windowGradient": [
+      "#15100d",
+      "#211913"
+    ],
+    "muted": "#a08f83",
+    "accent": "#f0955c"
+  }
+}

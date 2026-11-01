@@ -1,0 +1,38 @@
+{
+  "id": "ink",
+  "name": "Ink",
+  "appearance": "dark",
+  "pair": "paper",
+  "background": "#0e131b",
+  "foreground": "#d3dae6",
+  "cursor": "#7aaeff",
+  "cursorText": "#0e131b",
+  "selectionBackground": "#22324a",
+  "selectionForeground": "#d3dae6",
+  "ansi": [
+    "#1c2230",
+    "#e5737a",
+    "#a6d189",
+    "#e0c070",
+    "#8cb8ff",
+    "#c3a6f0",
+    "#6fc3e0",
+    "#d3dae6",
+    "#5f6c80",
+    "#e5737a",
+    "#a6d189",
+    "#e0c070",
+    "#8cb8ff",
+    "#c3a6f0",
+    "#6fc3e0",
+    "#f2f2f2"
+  ],
+  "skinnyDip": {
+    "windowGradient": [
+      "#0e131b",
+      "#171e2a"
+    ],
+    "muted": "#8f9bad",
+    "accent": "#7aaeff"
+  }
+}

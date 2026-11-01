@@ -9,8 +9,43 @@ A document's text exactly as the user typed it; the source of truth that Skinny 
 _Avoid_: raw text, plain text, model
 
 **Preview**:
-The side-by-side rendering of the Markdown Source, showing the structure Copy as Rich Text will paste, in Skinny Dip's own theme rather than the destination's.
+The live rendering of the Markdown Source in its own Card, showing the structure Copy as Rich Text will paste, in Skinny Dip's own theme rather than the destination's.
 _Avoid_: viewer, render pane
+
+## Window
+
+**Tab**:
+One open Markdown document in the window's Tab strip; each Tab has its own Editor and Preview Cards.
+_Avoid_: window, pane, workspace
+
+**Card**:
+One of the two floating rounded panels in a Tab, the Editor Card or the Preview Card, each with a header and a footer.
+_Avoid_: pane, panel, block
+
+**Theme**:
+A named palette (window tint, text, accent, syntax colors) applied to the window, the Cards, the Editor and the Preview, never to the clipboard; themes come in light/dark pairs.
+_Avoid_: skin, color scheme
+
+**Zoom**:
+The single scale factor (⌘+ / ⌘− / ⌘0) applied to the whole window: Tab strip, Cards, Editor and Preview.
+_Avoid_: font size, text size
+
+**Scroll Sync**:
+The Preview following the Editor's scroll position, block by block; one-way, Editor to Preview.
+_Avoid_: linked scrolling
+
+## Documents
+
+**Scratch Document**:
+A document the user has never saved to a location of their choosing; Skinny Dip stores it itself, with its undo history, and reopens it on launch.
+_Avoid_: untitled file, temp file, draft
+
+**Recently Closed**:
+The list of Scratch Documents whose Tabs were closed in the last 30 days, reopened with ⇧⌘T.
+_Avoid_: trash, history
+
+**Duplicate**:
+Opening an unsaved copy of the current document as a new Scratch Document in the next Tab.
 
 ## Copying out
 

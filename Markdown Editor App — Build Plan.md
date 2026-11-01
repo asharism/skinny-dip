@@ -29,7 +29,7 @@ Keep the hybrid idea (native text view + web preview). Change the items below; m
 | FR-3.3 highlight.js | Keep | Bundle locally (no CDN). Preview only; pasted code is plain monospace (ADR-0001). |
 | NFR-1 sub-16 ms input | Keep | Easy with a plain-text view; the risk is editor syntax coloring, so color only the visible range. |
 | NFR-2 < 100 MB idle | Relax | WebKit runs out-of-process; measure app + WebContent together, target \~150 MB. |
-| Phase 4 scroll sync | Defer | Hard to get right; not needed for the copy workflow. |
+| Phase 4 scroll sync | Defer, then moved into MVP | One-way, Editor → Preview, matched block by block via Preview-only source-line anchors (ADR-0006, P5b). |
 | **Missing: Copy as Rich Text** | **Add — P0** | The actual goal. See pipeline section. |
 | **Missing: editor Markdown coloring** | Add — P2 | Headings, emphasis, code spans; keeps Sublime-like feel. |
 | **Missing: test strategy** | Add | Golden-file tests for HTML output; paste matrix for target apps. |
@@ -135,17 +135,24 @@ MVP = the smallest app that replaces the Sublime + VS Code preview round-trip on
 - Copy as Rich Text (⌘C), Copy as Markdown (⌘⇧C), Copy as HTML (⌥⌘C)
 - Paste as Markdown (⌘V) — P4
 - Toggle preview (⌘⇧P), light/dark follows system
-- Untitled document on launch (ordinary DocumentGroup document; a persistent scratchpad can come later)
+- UI Shell (P5b, ADR-0005, `docs/design/ui-shell.md`): Rex-style Tab strip (one document per Tab), Editor and Preview as floating Cards (side by side or stacked, maximize, hide Preview), Copy split button with a confirmation, Card footers with render-option chips, eight themes (four light/dark pairs, Match System)
+- Scroll sync, one-way Editor → Preview (ADR-0006)
+- Line height 1.65 in the Editor, 1.6 in the Preview
+- Untitled document on launch, only when no Scratch Documents were restored
+- No save prompts, ever (ADR-0007): saved files autosave in place; never-saved documents are Scratch Documents that persist with their undo history and reopen on launch; closing one moves it to Recently Closed (⇧⌘T)
+- Undo depth of at least 10,000 steps per document
+- Duplicate (⇧⌘S, Editor header, Tab menu): an unsaved copy as a new Tab
+- Zoom the whole UI with ⌘+ / ⌘− / ⌘0, VS Code style
 
 **Out (for now)**
 
-- Scroll sync, line numbers, custom themes, plugins
+- Two-way scroll sync, theme import or editing, window translucency, font-family settings, plugins
 - WYSIWYG / Notes-style editing (ADR-0002); live-preview styling in the editor is a maybe for P5
 - Local images, image paste, embedding images in the clipboard
 - Copying a preview selection
 - Math/LaTeX, Mermaid, footnotes beyond GFM
 - Export to PDF/DOCX (the paste covers it; revisit later)
-- iCloud sync, folder/sidebar browser, tabs beyond native window tabs
+- iCloud sync, folder/sidebar browser, more than two Cards per Tab
 - App Store release (run locally with a personal team first)
 
 ## Roadmap
@@ -161,6 +168,7 @@ Seven phases, each closed by a testable gate. P2 is the payoff: write, ⌘C, pas
 | P3 | Live preview: `WebView`, `render(html)`, debounce, scroll kept, highlight.js | Preview updates without flashing on a 10k-line file |
 | P4 | Paste as Markdown (HTML → Markdown converter) | Golden tests for pasted Outlook/Word/web HTML |
 | P5 | Editor quality: Markdown coloring, list continuation, smart indent | Typing latency holds on a 10k-line file |
+| P5b | UI Shell (#37): themes and Cards, Tab strip (spike first), Scratch Documents and no-prompt close, undo depth and Duplicate, Copy split button and footers, scroll sync, theme menu, Settings ▸ Appearance and Zoom (ADR-0005, ADR-0006, ADR-0007, `docs/design/ui-shell.md`). Starts after the P2 paste-matrix gate (#7). | Tabs switch without flashing; quitting and relaunching restores every Scratch Document with its undo history and never prompts; every theme passes the contrast test; scroll sync tracks a 10k-line file; the paste matrix is unchanged |
 | P6 | iPad/iPhone: `SplitPane`, editor/preview toggle, iOS editor and clipboard | Runs on device; paste matrix on iOS targets |
 
 **How we work it (Claude Code + TDD)**

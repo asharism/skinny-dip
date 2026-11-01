@@ -1,0 +1,38 @@
+{
+  "id": "plum",
+  "name": "Plum",
+  "appearance": "dark",
+  "pair": "lilac",
+  "background": "#130f1a",
+  "foreground": "#dcd0ec",
+  "cursor": "#c29bff",
+  "cursorText": "#130f1a",
+  "selectionBackground": "#33264a",
+  "selectionForeground": "#dcd0ec",
+  "ansi": [
+    "#1c2230",
+    "#e5737a",
+    "#a6d6a6",
+    "#e0c070",
+    "#cfa9ff",
+    "#f0a6c6",
+    "#8fc4f0",
+    "#dcd0ec",
+    "#6f6684",
+    "#e5737a",
+    "#a6d6a6",
+    "#e0c070",
+    "#cfa9ff",
+    "#f0a6c6",
+    "#8fc4f0",
+    "#f2f2f2"
+  ],
+  "skinnyDip": {
+    "windowGradient": [
+      "#130f1a",
+      "#1d1727"
+    ],
+    "muted": "#9e93b2",
+    "accent": "#c29bff"
+  }
+}

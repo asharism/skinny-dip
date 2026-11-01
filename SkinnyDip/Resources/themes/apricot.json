@@ -1,0 +1,38 @@
+{
+  "id": "apricot",
+  "name": "Apricot",
+  "appearance": "light",
+  "pair": "ember",
+  "background": "#f5e1d2",
+  "foreground": "#45322a",
+  "cursor": "#a9491b",
+  "cursorText": "#f5e1d2",
+  "selectionBackground": "#f2d6c4",
+  "selectionForeground": "#45322a",
+  "ansi": [
+    "#45322a",
+    "#b3261e",
+    "#626118",
+    "#8a6a00",
+    "#a1431a",
+    "#7a4f8c",
+    "#2f6f8f",
+    "#f4f4f2",
+    "#988278",
+    "#b3261e",
+    "#626118",
+    "#8a6a00",
+    "#a1431a",
+    "#7a4f8c",
+    "#2f6f8f",
+    "#ffffff"
+  ],
+  "skinnyDip": {
+    "windowGradient": [
+      "#f5e1d2",
+      "#f3ebe0"
+    ],
+    "muted": "#745e53",
+    "accent": "#a9491b"
+  }
+}

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Skinny Dip themes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#2e6b9e}a:hover{color:#1d4f78}
+</style>
+</helmet>
+<div style="width: 1440px; height: 760px; box-sizing: border-box; padding: 40px; background: #dcdcd8; display: flex; flex-direction: column; gap: 22px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; color: #2b2b2b">
+  <div style="display: flex; align-items: baseline; gap: 16px">
+    <h1 style="margin: 0; font-size: 26px; font-weight: 700">Themes</h1>
+    <span style="font-size: 14px; color: #555">Four light/dark pairs. “Match System” switches between the two halves of a pair. Each theme is one token file: background, foreground, cursor, selection and 16 ANSI colors.</span>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px">
+    <sc-for list="{{themes}}" as="th" hint-placeholder-count="8">
+      <div style="border-radius: 14px; overflow: hidden; background: linear-gradient(140deg, {{th.bgA}}, {{th.bgB}}); box-shadow: 0 0 0 1px rgba(0,0,0,0.14); padding: 12px; display: flex; flex-direction: column; gap: 10px; color: {{th.fg}}">
+        <div style="display: flex; align-items: baseline; gap: 8px">
+          <span style="font-size: 15px; font-weight: 650">{{th.name}}</span>
+          <span style="font-size: 12px; color: {{th.muted}}">{{th.kind}} · pairs with {{th.pair}}</span>
+        </div>
+        <div style="border-radius: 10px; background: {{th.card}}; box-shadow: 0 0 0 1px {{th.border}}; padding: 10px 12px; font-family: 'SF Mono', ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.65">
+          <div style="color: {{th.h}}; font-weight: 600"># Weekly status</div>
+          <div><span style="color: {{th.mk}}">- </span><span>Moved to the </span><span style="font-weight: 700">**ledger**</span></div>
+          <div><span style="color: {{th.mk}}">- </span><span style="color: {{th.i}}; font-style: italic">*under 2 min*</span><span> and </span><span style="color: {{th.code}}">`v2`</span></div>
+          <div style="background: {{th.sel}}; margin: 0 -12px; padding: 0 12px"><span style="color: {{th.quote}}; font-style: italic">&gt; see </span><span style="color: {{th.link}}">[DEV-412](…)</span><span style="display: inline-block; width: 2px; height: 1.1em; vertical-align: -0.2em; background: {{th.accent}}; margin-left: 1px"></span></div>
+        </div>
+        <div style="display: flex; gap: 4px">
+          <sc-for list="{{th.chips}}" as="c" hint-placeholder-count="8">
+            <span style="flex: 1; height: 14px; border-radius: 4px; background: {{c}}; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></span>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; font-size: 13px; color: #3a3a38; line-height: 1.5">
+    <div><b>Window</b> — background tints the title bar and the gap around the cards.</div>
+    <div><b>Cards</b> — a translucent surface over the window tint; the header and footer sit on the same surface.</div>
+    <div><b>Editor</b> — syntax colors come from the ANSI slots (heading, marker, emphasis, link, code, quote).</div>
+    <div><b>Preview</b> — the theme’s text, link and border colors. The clipboard never takes theme colors (ADR-0001).</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":760}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = { card: 'rgba(255,255,255,0.80)', border: 'rgba(0,0,0,0.08)', kind: 'Light' };
+    const D = { card: 'rgba(255,255,255,0.045)', border: 'rgba(255,255,255,0.09)', kind: 'Dark' };
+    const list = [
+      Object.assign({}, L, { name: 'Paper', pair: 'Ink', bgA: '#efe9df', bgB: '#e4ecee', fg: '#2b2b2b', muted: '#67625c', accent: '#a84d26', sel: 'rgba(168,77,38,0.12)', h: '#943f1b', mk: '#8f8a84', i: '#3c5a78', link: '#2b6797', code: '#55672a', quote: '#67625c' }),
+      Object.assign({}, L, { name: 'Sea Glass', pair: 'Pine', bgA: '#dcece6', bgB: '#e7edf4', fg: '#22382f', muted: '#566d66', accent: '#1d7462', sel: 'rgba(29,116,98,0.12)', h: '#17614f', mk: '#869b95', i: '#4b5e8c', link: '#1d6a8f', code: '#7a5a1e', quote: '#566d66' }),
+      Object.assign({}, L, { name: 'Apricot', pair: 'Ember', bgA: '#f5e1d2', bgB: '#f3ebe0', fg: '#45322a', muted: '#745e53', accent: '#a9491b', sel: 'rgba(169,73,27,0.12)', h: '#a1431a', mk: '#a8928a', i: '#7a4f8c', link: '#2f6f8f', code: '#626118', quote: '#745e53' }),
+      Object.assign({}, L, { name: 'Lilac', pair: 'Plum', bgA: '#e9e2f5', bgB: '#e0eaf3', fg: '#352e45', muted: '#665f7c', accent: '#6449b8', sel: 'rgba(100,73,184,0.12)', h: '#573ea6', mk: '#958ea8', i: '#9a4570', link: '#2f5fa6', code: '#3f7058', quote: '#665f7c' }),
+      Object.assign({}, D, { name: 'Ink', pair: 'Paper', bgA: '#0e131b', bgB: '#171e2a', fg: '#d3dae6', muted: '#8f9bad', accent: '#7aaeff', sel: 'rgba(122,174,255,0.14)', h: '#8cb8ff', mk: '#5f6c80', i: '#c3a6f0', link: '#6fc3e0', code: '#a6d189', quote: '#8f9bad' }),
+      Object.assign({}, D, { name: 'Pine', pair: 'Sea Glass', bgA: '#0f1612', bgB: '#18231c', fg: '#c8d6ca', muted: '#8a9a8c', accent: '#7fcf9f', sel: 'rgba(127,207,159,0.13)', h: '#8fd6a8', mk: '#5d6e61', i: '#d6c78a', link: '#7fc4d6', code: '#e0a97a', quote: '#8a9a8c' }),
+      Object.assign({}, D, { name: 'Ember', pair: 'Apricot', bgA: '#15100d', bgB: '#211913', fg: '#e0d0c4', muted: '#a08f83', accent: '#f0955c', sel: 'rgba(240,149,92,0.13)', h: '#f4a86f', mk: '#736358', i: '#d6b4e0', link: '#8fc0dd', code: '#b9cf86', quote: '#a08f83' }),
+      Object.assign({}, D, { name: 'Plum', pair: 'Lilac', bgA: '#130f1a', bgB: '#1d1727', fg: '#dcd0ec', muted: '#9e93b2', accent: '#c29bff', sel: 'rgba(194,155,255,0.14)', h: '#cfa9ff', mk: '#6f6684', i: '#f0a6c6', link: '#8fc4f0', code: '#a6d6a6', quote: '#9e93b2' })
+    ];
+    return { themes: list.map((t) => Object.assign({}, t, { chips: [t.bgA, t.fg, t.accent, t.h, t.i, t.link, t.code, t.mk] })) };
+  }
+}
+</script>
+</body>
+</html>

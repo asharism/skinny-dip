@@ -1,0 +1,38 @@
+{
+  "id": "sea-glass",
+  "name": "Sea Glass",
+  "appearance": "light",
+  "pair": "pine",
+  "background": "#dcece6",
+  "foreground": "#22382f",
+  "cursor": "#1d7462",
+  "cursorText": "#dcece6",
+  "selectionBackground": "#cfe5dd",
+  "selectionForeground": "#22382f",
+  "ansi": [
+    "#22382f",
+    "#b3261e",
+    "#7a5a1e",
+    "#8a6a00",
+    "#17614f",
+    "#4b5e8c",
+    "#1d6a8f",
+    "#f4f4f2",
+    "#788d87",
+    "#b3261e",
+    "#7a5a1e",
+    "#8a6a00",
+    "#17614f",
+    "#4b5e8c",
+    "#1d6a8f",
+    "#ffffff"
+  ],
+  "skinnyDip": {
+    "windowGradient": [
+      "#dcece6",
+      "#e7edf4"
+    ],
+    "muted": "#566d66",
+    "accent": "#1d7462"
+  }
+}
