@@ -1,5 +1,6 @@
 import SwiftUI
 #if os(macOS)
+import AppKit
 import MarkdownCore
 #endif
 
@@ -9,6 +10,8 @@ struct ContentView: View {
     @State private var selection: Range<String.Index>?
     @State private var canUndo = false
     @State private var canRedo = false
+    @State private var hasEditorSelection = false
+    @State private var canPasteFromPasteboard = NSPasteboard.general.canPasteFromPasteboard
     @StateObject private var previewState = DocumentPreviewState()
     @AppStorage("showPreview") private var showPreview = true
     @AppStorage("previewLeadingFraction") private var previewLeadingFraction: Double = 0.5
@@ -56,13 +59,33 @@ struct ContentView: View {
             text: $document.source,
             selection: $selection,
             canUndo: $canUndo,
-            canRedo: $canRedo
+            canRedo: $canRedo,
+            hasEditorSelection: $hasEditorSelection
         )
         .focusedSceneValue(\.copySource, CopySource(
             markdown: document.source,
             selection: selection
         ))
         .focusedSceneValue(\.editorHistoryMenuState, EditorHistoryMenuState(canUndo: canUndo, canRedo: canRedo))
+        .focusedSceneValue(\.editorPasteboardMenuState, editorPasteboardMenuState)
+        .onAppear { refreshPasteboardMenuState() }
+        .onChange(of: hasEditorSelection) { refreshPasteboardMenuState() }
+        .onChange(of: document.source) { refreshPasteboardMenuState() }
+        .onReceive(NotificationCenter.default.publisher(for: .editorMenuWillOpen)) { _ in
+            refreshPasteboardMenuState()
+        }
+    }
+
+    private var editorPasteboardMenuState: EditorPasteboardMenuState {
+        EditorPasteboardMenuState(
+            canCut: hasEditorSelection,
+            canCopy: hasEditorSelection || !document.source.isEmpty,
+            canPaste: canPasteFromPasteboard
+        )
+    }
+
+    private func refreshPasteboardMenuState() {
+        canPasteFromPasteboard = NSPasteboard.general.canPasteFromPasteboard
     }
 
     private func refreshPreview() {
@@ -77,3 +100,9 @@ struct ContentView: View {
     }
     #endif
 }
+
+#if os(macOS)
+extension Notification.Name {
+    static let editorMenuWillOpen = Notification.Name("skinnyDipEditorMenuWillOpen")
+}
+#endif
