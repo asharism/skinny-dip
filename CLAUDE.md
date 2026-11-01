@@ -56,9 +56,15 @@ Packages/MarkdownCore/
 - **Documents:** `DocumentGroup` + `FileDocument` with UTType `net.daringfireball.markdown`.
 - Wrap first-generation 26 APIs (`WebView`, `TextEditor`) behind protocols so they can fall back to `WKWebView` / `UITextView`.
 
+## Agent ownership
+
+**Agents own building the app end-to-end.** Implement features, fix bugs, run `xcodegen`, `xcodebuild`, and tests, rebuild the editor bundle when JS changes, and **launch the app locally** when a change needs review. Before asking anyone to verify issue #6-style editor behavior, run `xcodebuild test … -only-testing:SkinnyDipTests/EditorNativeTextTests` (WKWebView harness: spell attrs, Writing Tools selection prep, ⌃A / ⌃⇧↓). Do not hand work back with “you verify” as the default next step. If automation cannot cover something (Writing Tools sheet UI, live dictation audio, paste matrix), exercise the built app yourself first; only ask the user for product decisions or blocked credentials/hardware.
+
+Issue labels like `ready-for-human` describe repo triage, not permission to stop implementing. Prefer `ready-for-agent` work and drive it to green builds without delegating execution.
+
 ## Working agreements
 
-- **TDD:** each phase starts with failing golden-file tests (`.md` → expected `.html`) in `MarkdownCore/Tests`, then code until green. One PR-sized story per session. Claude drafts the failing tests, the user reviews them, then Claude implements.
+- **TDD:** each phase starts with failing golden-file tests (`.md` → expected `.html`) in `MarkdownCore/Tests`, then code until green. One PR-sized story per session. Draft failing tests, implement, and iterate until tests and build pass—without waiting for human approval of the test list first.
 - **MVP scope is the contract.** Out for now: scroll sync, line numbers, custom themes, plugins, math/Mermaid, PDF/DOCX export, iCloud, sidebar, App Store. A new feature needs a paste-workflow reason.
 - The paste matrix is tested by hand every release from `docs/paste-matrix/fixture.md`, results logged in `docs/paste-matrix/results.md`. Tier 1 (blocks release, wins ties): new Outlook, Outlook for Mac, Teams. Tier 2 (fix when cheap): Word, Gmail web, Apple Mail, Google Docs. Keep the HTML simple (no flex or grid).
 

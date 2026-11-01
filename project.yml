@@ -57,6 +57,8 @@ targets:
               public.mime-type: [text/markdown]
         LSSupportsOpeningDocumentsInPlace: true
         UISupportsDocumentBrowser: true
+        NSMicrophoneUsageDescription: Skinny Dip uses the microphone so you can dictate into the editor.
+        NSSpeechRecognitionUsageDescription: Skinny Dip uses speech recognition for dictation in the editor.
 
   # Hosted in the app so tests reach app-target code (clipboard, settings) with
   # @testable import. Mac only for now.
