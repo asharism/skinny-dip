@@ -1,4 +1,5 @@
 #if os(macOS)
+import Foundation
 import MarkdownCore
 
 /// Single place that builds copy payloads for the menu, the editor's `copy(_:)`
@@ -14,22 +15,25 @@ enum CopyWriter {
 
     static func writeRichText(from source: CopySource, clipboard: any Clipboard) {
         clipboard.write(richTextPayload(for: source))
+        CopyFeedback.post(.richText, documentID: source.documentID)
     }
 
-    static func writeRichText(markdown: String, selection: Range<String.Index>?) {
-        writeRichText(from: CopySource(markdown: markdown, selection: selection), clipboard: MacClipboard())
+    static func writeRichText(markdown: String, selection: Range<String.Index>?, documentID: UUID? = nil) {
+        writeRichText(from: CopySource(markdown: markdown, selection: selection, documentID: documentID), clipboard: MacClipboard())
     }
 
-    static func writeMarkdown(markdown: String, selection: Range<String.Index>?) {
+    static func writeMarkdown(markdown: String, selection: Range<String.Index>?, documentID: UUID? = nil) {
         MacClipboard().write(plainText: CopyAsMarkdown.text(for: markdown, selection: selection))
+        CopyFeedback.post(.markdown, documentID: documentID)
     }
 
-    static func writeHTML(markdown: String, selection: Range<String.Index>?) {
+    static func writeHTML(markdown: String, selection: Range<String.Index>?, documentID: UUID? = nil) {
         MacClipboard().write(plainText: CopyAsHTML.text(
             for: markdown,
             selection: selection,
             options: RenderSettings.options()
         ))
+        CopyFeedback.post(.html, documentID: documentID)
     }
 }
 #endif

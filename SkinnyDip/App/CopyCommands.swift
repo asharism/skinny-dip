@@ -38,20 +38,19 @@ struct CopyCommands: Commands {
                 .disabled(!(pasteboardMenuState?.canCopy ?? true))
             Button("Copy as Markdown") {
                 guard let source else { return }
-                CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection)
+                CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection, documentID: source.documentID)
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .disabled(source == nil)
             Button("Copy as HTML") {
                 guard let source else { return }
-                CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection)
+                CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection, documentID: source.documentID)
             }
             .keyboardShortcut("c", modifiers: [.command, .option])
             .disabled(source == nil)
-            Button("Paste") { send(#selector(NSText.paste(_:))) }
+            Button("Paste", action: paste)
                 .keyboardShortcut("v")
-                .disabled(!(pasteboardMenuState?.canPaste ?? true))
-            Button("Paste and Match Style") { send(#selector(NSTextView.pasteAsPlainText(_:))) }
+            Button("Paste and Match Style", action: pasteAsPlainText)
                 .keyboardShortcut("v", modifiers: [.command, .option, .shift])
             Button("Delete") { send(#selector(NSText.delete(_:))) }
             Button("Select All") { send(#selector(NSText.selectAll(_:))) }
@@ -63,7 +62,23 @@ struct CopyCommands: Commands {
     /// to the system Copy, so copying still works everywhere.
     private func copyAsRichText() {
         guard let source else { return send(#selector(NSText.copy(_:))) }
-        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection)
+        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection, documentID: source.documentID)
+    }
+
+    private func paste() {
+        if let editor = EditorWebView.pasteTarget() {
+            editor.paste(nil)
+        } else {
+            send(#selector(NSText.paste(_:)))
+        }
+    }
+
+    private func pasteAsPlainText() {
+        if let editor = EditorWebView.pasteTarget() {
+            editor.pasteAsPlainText(nil)
+        } else {
+            send(#selector(NSTextView.pasteAsPlainText(_:)))
+        }
     }
 
     private func send(_ action: Selector) {

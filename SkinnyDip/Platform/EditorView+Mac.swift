@@ -11,6 +11,9 @@ struct EditorView: NSViewRepresentable {
     @Binding var canUndo: Bool
     @Binding var canRedo: Bool
     @Binding var hasEditorSelection: Bool
+    var documentID: UUID
+    var themeVars: [String: String]
+    var controller: EditorController
 
     private static let editDebounceNanoseconds: UInt64 = 200_000_000
 
@@ -57,6 +60,8 @@ struct EditorView: NSViewRepresentable {
         }
         webView.editorCoordinator = context.coordinator
         context.coordinator.webView = webView
+        webView.useTransparentPage()
+        context.coordinator.installBridge()
         #if DEBUG
         webView.isInspectable = true
         #endif
@@ -72,6 +77,10 @@ struct EditorView: NSViewRepresentable {
 
     func updateNSView(_ webView: EditorWebView, context: Context) {
         context.coordinator.parent = self
+        context.coordinator.installBridge()
+        if context.coordinator.isReady {
+            Task { @MainActor in await context.coordinator.applyThemeIfNeeded() }
+        }
         if !context.coordinator.isReady {
             context.coordinator.pendingText = text
             return
@@ -93,8 +102,9 @@ struct EditorView: NSViewRepresentable {
         var lastEditorText: String?
         var pendingText: String?
         var isApplyingRemoteEdit = false
-        private(set) var isBindingSyncPending = false
+        private(set)         var isBindingSyncPending = false
         private var debounceTask: Task<Void, Never>?
+        private var appliedTheme: [String: String] = [:]
 
         init(parent: EditorView) {
             self.parent = parent
@@ -125,11 +135,27 @@ struct EditorView: NSViewRepresentable {
             let text = pendingText ?? parent.text
             pendingText = nil
             await pushDocument(text, resetSelection: true)
+            await applyThemeIfNeeded()
+            if let history = parent.controller.pendingHistory {
+                parent.controller.pendingHistory = nil
+                await importHistory(history)
+            }
             webView?.window?.makeFirstResponder(webView)
             _ = try? await webView?.callAsyncJavaScript("return focusEditor()", contentWorld: .page)
             if let pending = pendingText, pending != lastEditorText {
                 pendingText = nil
                 await pushDocument(pending, resetSelection: true)
+            }
+        }
+
+        /// The editor already shows `text` (a paste, or an immediate undo). Publish it
+        /// to SwiftUI so the preview renders, without sending the text back into CodeMirror.
+        func adoptEditorText(_ text: String) {
+            lastEditorText = text
+            debounceTask?.cancel()
+            isBindingSyncPending = false
+            if parent.text != text {
+                parent.text = text
             }
         }
 
@@ -173,8 +199,7 @@ struct EditorView: NSViewRepresentable {
                 let immediate = body["immediate"] as? Bool ?? false
                 debounceTask?.cancel()
                 if immediate {
-                    isBindingSyncPending = false
-                    parent.text = newText
+                    adoptEditorText(newText)
                     return
                 }
                 isBindingSyncPending = true
@@ -196,9 +221,64 @@ struct EditorView: NSViewRepresentable {
                 if let hasSelection = body["hasSelection"] as? Bool {
                     parent.hasEditorSelection = hasSelection
                 }
+                if let head = body["head"] as? Int {
+                    parent.controller.cursorUTF16 = head
+                } else {
+                    parent.controller.cursorUTF16 = from
+                }
                 applySelection(from: from, to: to, rangeCount: rangeCount)
+            case "viewport":
+                let line = Self.number(body["topLine"])
+                let fraction = Self.number(body["fraction"])
+                parent.controller.viewport = EditorViewport(topLine: Int(line ?? 1), fraction: fraction ?? 0)
+            case "historyRestoreFailed":
+                break
             default:
                 break
+            }
+        }
+
+        func installBridge() {
+            guard let webView else { return }
+            parent.controller.exportState = { [weak webView] in
+                guard let webView else { return nil }
+                let result = try? await webView.callAsyncJavaScript("return exportState()", contentWorld: .page)
+                return result as? String
+            }
+            parent.controller.importState = { [weak webView] json in
+                _ = try? await webView?.callAsyncJavaScript(
+                    "return importState(json)",
+                    arguments: ["json": json],
+                    contentWorld: .page
+                )
+            }
+        }
+
+        func applyThemeIfNeeded() async {
+            guard let webView, parent.themeVars != appliedTheme else { return }
+            appliedTheme = parent.themeVars
+            _ = try? await webView.callAsyncJavaScript(
+                "return setTheme(vars)",
+                arguments: ["vars": parent.themeVars],
+                contentWorld: .page
+            )
+        }
+
+        func importHistory(_ json: String) async {
+            guard let webView else { return }
+            _ = try? await webView.callAsyncJavaScript(
+                "return importState(json)",
+                arguments: ["json": json],
+                contentWorld: .page
+            )
+        }
+
+        private static func number(_ value: Any?) -> Double? {
+            switch value {
+            case let number as Double: return number
+            case let number as Int: return Double(number)
+            case let number as NSNumber: return number.doubleValue
+            default: return nil
             }
         }
 
@@ -218,6 +298,15 @@ struct EditorView: NSViewRepresentable {
 
 /// Edit menu Select All must reach CodeMirror, not WebKit's viewport-limited default.
 final class EditorWebView: WKWebView {
+    override var isOpaque: Bool { false }
+
+    func useTransparentPage() {
+        underPageBackgroundColor = .clear
+        wantsLayer = true
+        layer?.isOpaque = false
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
     var onSelectAll: (() -> Void)?
     var onUndo: (() -> Void)?
     var onRedo: (() -> Void)?
@@ -279,20 +368,63 @@ final class EditorWebView: WKWebView {
         }
     }
 
+    /// The editor web view in the key window, when ⌘V should land in the document
+    /// rather than in another text field (Settings, an open panel).
+    static func pasteTarget() -> EditorWebView? {
+        if let editor = enclosingEditor(NSApp.keyWindow?.firstResponder) { return editor }
+        if NSApp.keyWindow?.firstResponder is NSTextView { return nil }
+        return editorWebView(in: NSApp.keyWindow?.contentView)
+    }
+
+    private static func enclosingEditor(_ responder: NSResponder?) -> EditorWebView? {
+        var current = responder
+        while let next = current {
+            if let editor = next as? EditorWebView { return editor }
+            current = next.nextResponder
+        }
+        return nil
+    }
+
+    private static func editorWebView(in view: NSView?) -> EditorWebView? {
+        guard let view else { return nil }
+        if let editor = view as? EditorWebView { return editor }
+        for child in view.subviews {
+            if let editor = editorWebView(in: child) { return editor }
+        }
+        return nil
+    }
+
+    /// WebKit's own paste reads the pasteboard in the web process, which the
+    /// sandbox blocks, so ⌘V inserts here and the text is pushed in over the bridge.
     @objc func paste(_ sender: Any?) {
+        guard let text = NSPasteboard.general.editorPasteText() else { return }
+        insertEditorText(text)
+    }
+
+    @objc func pasteAsPlainText(_ sender: Any?) {
         let pasteboard = NSPasteboard.general
-        if let markdown = pasteboard.string(forType: .skinnyDipMarkdown), !markdown.isEmpty {
-            Task { @MainActor in
-                _ = try? await callAsyncJavaScript(
-                    "return insertText(text)",
-                    arguments: ["text": markdown],
-                    contentWorld: .page
-                )
-            }
+        let text = pasteboard.string(forType: .string) ?? pasteboard.editorPasteText()
+        guard let text, !text.isEmpty else { return }
+        insertEditorText(text)
+    }
+
+    private var lastInsertedPaste: (text: String, at: Date)?
+
+    private func insertEditorText(_ text: String) {
+        // ⌘V is delivered both by the key monitor and the Edit menu. Keep one insert.
+        if let last = lastInsertedPaste, last.text == text, Date().timeIntervalSince(last.at) < 0.2 {
             return
         }
-        if let next = nextResponder, next.responds(to: #selector(paste(_:))) {
-            next.perform(#selector(paste(_:)), with: sender)
+        lastInsertedPaste = (text, Date())
+        Task { @MainActor in
+            let inserted = try? await callAsyncJavaScript(
+                "return insertText(text)",
+                arguments: ["text": text],
+                contentWorld: .page
+            )
+            if let inserted = inserted as? String {
+                editorCoordinator?.adoptEditorText(inserted)
+            }
         }
     }
 
@@ -402,17 +534,17 @@ final class EditorWebView: WKWebView {
 
     private func writeRichTextToPasteboard() {
         let source = copySource()
-        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection)
+        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection, documentID: editorCoordinator?.parent.documentID)
     }
 
     private func writeMarkdownToPasteboard() {
         let source = copySource()
-        CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection)
+        CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection, documentID: editorCoordinator?.parent.documentID)
     }
 
     private func writeHTMLToPasteboard() {
         let source = copySource()
-        CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection)
+        CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection, documentID: editorCoordinator?.parent.documentID)
     }
 
     private func customizeCopyMenu(_ menu: NSMenu) {

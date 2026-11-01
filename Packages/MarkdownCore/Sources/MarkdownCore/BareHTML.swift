@@ -12,15 +12,24 @@ public enum BareHTML {
 /// code blocks so highlight.js can pick a language (ADR-0004). Copy never uses this path.
 public enum PreviewHTML {
     public static func render(_ source: String, options: RenderOptions = .default) -> String {
-        HTMLRenderer.render(source, options: options, codeLanguageHints: true)
+        HTMLRenderer.render(source, options: options, codeLanguageHints: true, sourceLineAnchors: true)
     }
 }
 
 enum HTMLRenderer {
-    static func render(_ source: String, options: RenderOptions, codeLanguageHints: Bool) -> String {
+    static func render(
+        _ source: String,
+        options: RenderOptions,
+        codeLanguageHints: Bool,
+        sourceLineAnchors: Bool = false
+    ) -> String {
         // Smart punctuation would turn typed quotes and dashes into curly ones (ADR-0002).
         let document = Document(parsing: source, options: .disableSmartOpts)
-        var renderer = Renderer(options: options, codeLanguageHints: codeLanguageHints)
+        var renderer = Renderer(
+            options: options,
+            codeLanguageHints: codeLanguageHints,
+            sourceLineAnchors: sourceLineAnchors
+        )
         return renderer.visit(document)
     }
 }
@@ -28,12 +37,15 @@ enum HTMLRenderer {
 private struct Renderer: MarkupVisitor {
     let options: RenderOptions
     let codeLanguageHints: Bool
+    /// Preview-only. Top-level blocks get `data-source-line` (ADR-0006). Copy never sets this.
+    let sourceLineAnchors: Bool
     private var isInsideLink = false
     private var tableAlignments: [Table.ColumnAlignment?] = []
 
-    init(options: RenderOptions, codeLanguageHints: Bool) {
+    init(options: RenderOptions, codeLanguageHints: Bool, sourceLineAnchors: Bool) {
         self.options = options
         self.codeLanguageHints = codeLanguageHints
+        self.sourceLineAnchors = sourceLineAnchors
     }
 
     mutating func defaultVisit(_ markup: any Markup) -> String {
@@ -43,7 +55,21 @@ private struct Renderer: MarkupVisitor {
     // MARK: Blocks
 
     mutating func visitDocument(_ document: Document) -> String {
-        visitBlocks(of: document)
+        document.children.map { child in
+            let html = visit(child)
+            guard sourceLineAnchors, let line = child.range?.lowerBound.line else { return html }
+            return insertingSourceLine(line, into: html)
+        }.joined(separator: "\n")
+    }
+
+    /// Puts `data-source-line` on the opening tag of a top-level block.
+    private func insertingSourceLine(_ line: Int, into html: String) -> String {
+        guard html.first == "<", let index = html.firstIndex(where: { $0 == " " || $0 == ">" }) else {
+            return html
+        }
+        var copy = html
+        copy.insert(contentsOf: " data-source-line=\"\(line)\"", at: index)
+        return copy
     }
 
     mutating func visitHeading(_ heading: Heading) -> String {

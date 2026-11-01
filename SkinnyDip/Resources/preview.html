@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="color-scheme" content="light dark">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="theme.css">
   <script src="highlight.min.js"></script>
@@ -10,18 +9,120 @@
 <body>
   <main id="content"></main>
   <script>
-    function render(html) {
+    let scrollSync = true;
+    let lastLine = 1;
+    let lastFraction = 0;
+    let anchors = [];
+
+    function cacheAnchors() {
+      anchors = Array.from(document.querySelectorAll("[data-source-line]")).map((el) => ({
+        el,
+        line: Number(el.getAttribute("data-source-line")),
+      }));
+    }
+
+    function scrollRoot() {
+      const body = document.body;
+      const doc = document.documentElement;
+      // The body is the scrollport (height 100%, overflow auto). The document
+      // element is overflow hidden, so its scrollTop never moves the preview.
+      if (body && body.scrollHeight > body.clientHeight + 1) return body;
+      if (doc && doc.scrollHeight > doc.clientHeight + 1) return doc;
+      return body || document.scrollingElement || doc;
+    }
+
+    function elementTop(el) {
+      const root = scrollRoot();
+      return el.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop;
+    }
+
+    function targetY(line, fraction) {
+      if (!anchors.length) return 0;
+      const tops = anchors.map((anchor) => elementTop(anchor.el));
+      let above = -1;
+      for (let index = 0; index < anchors.length; index += 1) {
+        if (anchors[index].line <= line) above = index;
+      }
+      if (above < 0) return 0;
+      const below = anchors.findIndex((anchor) => anchor.line > line);
+      const start = tops[above];
+      const root = scrollRoot();
+      if (below < 0) {
+        const end = root.scrollHeight;
+        const progress = Math.min(1, Math.max(0, line + fraction - anchors[above].line));
+        return start + (end - start) * progress;
+      }
+      const span = anchors[below].line - anchors[above].line;
+      const progress = span === 0 ? 0 : (line + fraction - anchors[above].line) / span;
+      return start + (tops[below] - start) * progress;
+    }
+
+    window.setTheme = (vars) => {
+      if (!vars) return;
+      const root = document.documentElement;
+      Object.keys(vars).forEach((key) => root.style.setProperty(key, String(vars[key])));
+    };
+
+    window.setZoom = (zoom) => {
+      const root = scrollRoot();
+      const height = root.scrollHeight || 1;
+      const relative = root.scrollTop / height;
+      document.documentElement.style.setProperty("--zoom", String(zoom));
+      if (scrollSync) {
+        window.syncToLine(lastLine, lastFraction);
+      } else {
+        root.scrollTop = relative * root.scrollHeight;
+      }
+    };
+
+    window.setScrollSync = (on) => {
+      scrollSync = !!on;
+    };
+
+    function applyScroll() {
+      const y = Math.max(0, targetY(lastLine, lastFraction) - 8);
+      const root = scrollRoot();
+      root.scrollTop = y;
+      if (root.scrollTop + 1 < y && anchors.length) {
+        let chosen = anchors[0];
+        for (let index = 0; index < anchors.length; index += 1) {
+          if (anchors[index].line <= lastLine) chosen = anchors[index];
+          else break;
+        }
+        chosen.el.scrollIntoView({ block: "start", inline: "nearest" });
+        scrollRoot().scrollTop = Math.max(0, targetY(lastLine, lastFraction) - 8);
+      }
+    }
+
+    window.syncToLine = (line, fraction) => {
+      lastLine = Number(line) || 1;
+      lastFraction = fraction == null ? 0 : Number(fraction) || 0;
+      if (!scrollSync) return false;
+      applyScroll();
+      return true;
+    };
+
+    function render(html, line, fraction) {
+      if (line != null && line !== "") {
+        lastLine = Number(line) || 1;
+        lastFraction = fraction == null ? lastFraction : Number(fraction) || 0;
+      }
       const root = document.getElementById("content");
-      const y = window.scrollY;
-      root.innerHTML = html;
+      const y = scrollRoot().scrollTop;
+      root.innerHTML = html && html.trim()
+        ? html
+        : '<p class="placeholder">Your formatted text appears here.</p>';
       root.querySelectorAll("pre code[data-lang]").forEach((block) => {
         const lang = block.getAttribute("data-lang");
-        if (lang) {
-          block.className = "language-" + lang;
-        }
+        if (lang) block.className = "language-" + lang;
         hljs.highlightElement(block);
       });
-      window.scrollTo(0, y);
+      cacheAnchors();
+      if (scrollSync && html && html.trim()) {
+        window.syncToLine(lastLine, lastFraction);
+      } else if (!scrollSync) {
+        scrollRoot().scrollTop = y;
+      }
     }
   </script>
 </body>

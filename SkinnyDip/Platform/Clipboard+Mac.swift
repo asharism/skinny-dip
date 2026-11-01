@@ -29,9 +29,33 @@ extension NSPasteboard.PasteboardType {
 
 extension NSPasteboard {
     var canPasteFromPasteboard: Bool {
-        if let markdown = string(forType: .skinnyDipMarkdown), !markdown.isEmpty { return true }
-        if let plain = string(forType: .string), !plain.isEmpty { return true }
-        return false
+        editorPasteText() != nil
+    }
+
+    /// Text for ⌘V. Copies made in Skinny Dip keep their Markdown flavor.
+    /// Rich text from other apps uses the plain-text flavor, then RTF, then HTML.
+    func editorPasteText() -> String? {
+        if let markdown = string(forType: .skinnyDipMarkdown), !markdown.isEmpty {
+            return markdown
+        }
+        if let plain = string(forType: .string), !plain.isEmpty {
+            return plain
+        }
+        if let values = readObjects(forClasses: [NSString.self], options: nil) as? [String],
+           let first = values.first, !first.isEmpty {
+            return first
+        }
+        if let data = data(forType: .rtf),
+           let text = NSAttributedString(rtf: data, documentAttributes: nil)?.string,
+           !text.isEmpty {
+            return text
+        }
+        if let data = data(forType: .html),
+           let text = NSAttributedString(html: data, options: [:], documentAttributes: nil)?.string {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+        return nil
     }
 }
 #endif

@@ -11,13 +11,13 @@ import {
   keymap,
   EditorView,
   ViewPlugin,
+  placeholder,
 } from "@codemirror/view";
-import { EditorState, Compartment, Prec, EditorSelection } from "@codemirror/state";
+import { EditorState, Prec, EditorSelection } from "@codemirror/state";
 import {
   foldGutter,
   indentOnInput,
   syntaxHighlighting,
-  defaultHighlightStyle,
   bracketMatching,
   foldKeymap,
   HighlightStyle,
@@ -25,6 +25,7 @@ import {
 } from "@codemirror/language";
 import {
   history,
+  historyField,
   defaultKeymap,
   historyKeymap,
   addCursorAbove,
@@ -97,46 +98,48 @@ const nativeTextChecker = ViewPlugin.fromClass(
   },
 );
 
-const lightHighlight = HighlightStyle.define([
-  { tag: t.heading, fontWeight: "bold", color: "#1f2328" },
-  { tag: [t.strong], fontWeight: "bold", color: "#1f2328" },
-  { tag: [t.emphasis], fontStyle: "italic", color: "#1f2328" },
-  { tag: t.strikethrough, textDecoration: "line-through", color: "#656d76" },
-  { tag: [t.link, t.url], color: "#0969da", textDecoration: "underline" },
-  { tag: [t.monospace], color: "#cf222e", backgroundColor: "#f6f8fa" },
-  { tag: [t.keyword, t.processingInstruction], color: "#8250df" },
-  { tag: [t.string], color: "#0a3069" },
-  { tag: [t.number, t.atom, t.bool], color: "#0550ae" },
-  { tag: [t.comment, t.meta, t.contentSeparator, t.quote], color: "#656d76" },
-  { tag: [t.list], color: "#1f2328" },
+const skinnyHighlight = HighlightStyle.define([
+  { tag: t.heading, fontWeight: "bold", color: "var(--heading)" },
+  // Only the punctuation is a marker. `t.list` tags the whole list item, which
+  // greyed out every bullet's text.
+  { tag: [t.processingInstruction, t.contentSeparator], color: "var(--marker)" },
+  { tag: t.emphasis, fontStyle: "italic", color: "var(--emphasis)" },
+  { tag: t.strong, fontWeight: "bold", color: "var(--fg)" },
+  { tag: [t.link, t.url], color: "var(--link)" },
+  { tag: t.monospace, color: "var(--code)" },
+  { tag: t.quote, fontStyle: "italic", color: "var(--quote)" },
+  { tag: t.strikethrough, textDecoration: "line-through", color: "var(--muted)" },
 ]);
-
-const darkHighlight = HighlightStyle.define([
-  { tag: t.heading, fontWeight: "bold", color: "#e6edf3" },
-  { tag: [t.strong], fontWeight: "bold", color: "#e6edf3" },
-  { tag: [t.emphasis], fontStyle: "italic", color: "#e6edf3" },
-  { tag: t.strikethrough, textDecoration: "line-through", color: "#8b949e" },
-  { tag: [t.link, t.url], color: "#4493f8", textDecoration: "underline" },
-  { tag: [t.monospace], color: "#ff7b72", backgroundColor: "#161b22" },
-  { tag: [t.keyword, t.processingInstruction], color: "#d2a8ff" },
-  { tag: [t.string], color: "#a5d6ff" },
-  { tag: [t.number, t.atom, t.bool], color: "#79c0ff" },
-  { tag: [t.comment, t.meta, t.contentSeparator, t.quote], color: "#8b949e" },
-  { tag: [t.list], color: "#e6edf3" },
-]);
-
-const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
-const highlight = new Compartment();
-const highlightFor = (dark) =>
-  syntaxHighlighting(dark ? darkHighlight : lightHighlight);
 
 const baseTheme = EditorView.theme({
-  "&": { height: "100%" },
+  "&": {
+    height: "100%",
+    backgroundColor: "transparent",
+    color: "var(--fg)",
+  },
   ".cm-scroller": {
     fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
-    fontSize: "13px",
-    lineHeight: "1.5",
+    fontSize: "var(--editor-font-size, 13px)",
+    lineHeight: "1.65",
   },
+  ".cm-content": {
+    padding: "calc(8px * var(--zoom, 1)) var(--editor-inline-pad, 22px) calc(16px * var(--zoom, 1))",
+    caretColor: "var(--cursor)",
+  },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--cursor)" },
+  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
+    backgroundColor: "var(--selection)",
+  },
+  ".cm-activeLine": {
+    backgroundColor: "color-mix(in srgb, var(--selection) 50%, transparent)",
+  },
+  ".cm-gutters": {
+    backgroundColor: "transparent",
+    color: "var(--marker)",
+    border: "none",
+  },
+  ".cm-activeLineGutter": { backgroundColor: "transparent" },
+  ".cm-placeholder": { color: "var(--muted)" },
 });
 
 function codeMirrorSetup() {
@@ -144,14 +147,15 @@ function codeMirrorSetup() {
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightSpecialChars(),
-    history({ newGroupDelay: UNDO_GROUP_MS }),
+    // 10_000 steps so a long draft can undo back to empty. Scratch documents persist this history.
+    history({ minDepth: 10000, newGroupDelay: UNDO_GROUP_MS }),
     foldGutter(),
     drawSelection(),
     dropCursor(),
     EditorState.allowMultipleSelections.of(true),
     indentOnInput(),
     indentUnit.of("  "),
-    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    syntaxHighlighting(skinnyHighlight),
     bracketMatching(),
     closeBrackets(),
     autocompletion(),
@@ -181,8 +185,43 @@ function reportSelection(view) {
     event: "selectionChanged",
     from: main.from,
     to: main.to,
+    head: main.head,
     rangeCount: view.state.selection.ranges.length,
     hasSelection,
+  });
+}
+
+let lastViewportKey = "";
+let viewportFrame = 0;
+
+function reportViewport() {
+  // Line blocks are measured from the document top, below the content padding.
+  // A screen-coordinate probe lands in that padding and always reports line 1.
+  const scroller = view.scrollDOM;
+  if (!view.state.doc.length) {
+    publishViewport(1, 0);
+    return;
+  }
+  const paddingTop = view.documentPadding.top || 0;
+  const probe = Math.max(0, scroller.scrollTop - paddingTop);
+  const block = view.lineBlockAtHeight(probe);
+  const lineNumber = view.state.doc.lineAt(block.from).number;
+  const fraction = Math.min(1, Math.max(0, (probe - block.top) / Math.max(1, block.height)));
+  publishViewport(lineNumber, fraction);
+}
+
+function publishViewport(lineNumber, fraction) {
+  const key = `${lineNumber}:${fraction.toFixed(3)}`;
+  if (key === lastViewportKey) return;
+  lastViewportKey = key;
+  post({ event: "viewport", topLine: lineNumber, fraction });
+}
+
+function scheduleViewport() {
+  if (viewportFrame) return;
+  viewportFrame = requestAnimationFrame(() => {
+    viewportFrame = 0;
+    reportViewport();
   });
 }
 
@@ -194,8 +233,9 @@ function reportHistory(view) {
   });
 }
 
-function extensions() {
+function currentExtensions() {
   return [
+    placeholder("Start typing Markdown. ⌘V turns rich text into Markdown."),
     sublimeKeys,
     emacsKeys,
     nativeTextChecker,
@@ -214,12 +254,11 @@ function extensions() {
       writingsuggestions: "true",
     }),
     baseTheme,
-    highlight.of(highlightFor(colorSchemeQuery.matches)),
     EditorView.updateListener.of((update) => {
       if (suppressBridge) return;
       if (update.docChanged) {
         const immediate = update.transactions.some(
-          (tr) => tr.isUserEvent("undo") || tr.isUserEvent("redo"),
+          (tr) => tr.isUserEvent("undo") || tr.isUserEvent("redo") || tr.isUserEvent("input.paste"),
         );
         post({
           event: "documentChanged",
@@ -233,30 +272,70 @@ function extensions() {
       if (update.docChanged || update.transactions.some((tr) => tr.isUserEvent("undo") || tr.isUserEvent("redo"))) {
         reportHistory(update.view);
       }
+      if (update.geometryChanged || update.viewportChanged) scheduleViewport();
     }),
   ];
 }
 
 const view = new EditorView({
-  state: EditorState.create({ doc: "", extensions: extensions() }),
+  state: EditorState.create({ doc: "", extensions: currentExtensions() }),
   parent: document.getElementById("editor"),
 });
 
-colorSchemeQuery.addEventListener("change", (e) => {
-  view.dispatch({ effects: highlight.reconfigure(highlightFor(e.matches)) });
-});
+view.scrollDOM.addEventListener("scroll", scheduleViewport, { passive: true });
+
+window.setTheme = (vars) => {
+  if (!vars) return true;
+  const root = document.documentElement;
+  for (const key of Object.keys(vars)) {
+    root.style.setProperty(key, String(vars[key]));
+  }
+  view.requestMeasure();
+  return true;
+};
 
 window.setDocument = (text) => {
   suppressBridge = true;
   try {
-    view.setState(EditorState.create({ doc: text, extensions: extensions() }));
+    view.setState(EditorState.create({ doc: text, extensions: currentExtensions() }));
     view.focus();
     reportSelection(view);
     reportHistory(view);
+    lastViewportKey = "";
+    reportViewport();
   } finally {
     suppressBridge = false;
   }
   return { event: "documentLoaded", length: view.state.doc.length };
+};
+
+window.exportState = () => JSON.stringify(view.state.toJSON({ history: historyField }));
+
+window.importState = (json) => {
+  suppressBridge = true;
+  try {
+    const parsed = typeof json === "string" ? JSON.parse(json) : json;
+    view.setState(
+      EditorState.fromJSON(parsed, { extensions: currentExtensions() }, { history: historyField }),
+    );
+    view.focus();
+    reportSelection(view);
+    reportHistory(view);
+    lastViewportKey = "";
+    reportViewport();
+    return true;
+  } catch (_) {
+    let doc = "";
+    try {
+      const parsed = typeof json === "string" ? JSON.parse(json) : json;
+      if (parsed && typeof parsed.doc === "string") doc = parsed.doc;
+    } catch (_) {}
+    view.setState(EditorState.create({ doc, extensions: currentExtensions() }));
+    post({ event: "historyRestoreFailed" });
+    return false;
+  } finally {
+    suppressBridge = false;
+  }
 };
 
 window.selectAllDocument = () => {
@@ -288,13 +367,17 @@ window.editorCut = () => {
 };
 
 window.insertText = (text) => {
+  const insert = text == null ? "" : String(text);
   const { from, to } = view.state.selection.main;
   view.dispatch({
-    changes: { from, to, insert: text },
+    changes: { from, to, insert },
+    selection: { anchor: from + insert.length },
     userEvent: "input.paste",
   });
   view.focus();
-  return true;
+  // Returned to Swift. The documentChanged message carries the same text, but a
+  // large paste can be dropped on that channel and the preview would stay stale.
+  return view.state.doc.toString();
 };
 
 window.focusEditor = () => {
