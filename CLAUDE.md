@@ -58,9 +58,15 @@ Packages/MarkdownCore/
 - **Documents:** `DocumentGroup` + `FileDocument` with UTType `net.daringfireball.markdown`. Never show a save prompt (ADR-0007): saved files autosave in place; never-saved documents are Scratch Documents stored under Application Support, restored on launch with their undo history; closing one moves it to Recently Closed.
 - Wrap first-generation 26 APIs (`WebView`, `TextEditor`) behind protocols so they can fall back to `WKWebView` / `UITextView`.
 
+## Agent ownership
+
+**Agents own building the app end-to-end.** Implement features, fix bugs, run `xcodegen`, `xcodebuild`, and tests, rebuild the editor bundle when JS changes, and **launch the app locally** when a change needs review. Do not hand work back with “you verify,” “run this yourself,” or “ready for human” as the next step. If something needs eyes on UI (paste matrix, Writing Tools, dictation), **open the built app and exercise it**; only ask the user when a product decision is genuinely ambiguous or blocked on credentials or hardware you cannot use.
+
+Issue labels like `ready-for-human` describe repo triage, not permission to stop implementing. Prefer `ready-for-agent` work and drive it to green builds without delegating execution.
+
 ## Working agreements
 
-- **TDD:** each phase starts with failing golden-file tests (`.md` → expected `.html`) in `MarkdownCore/Tests`, then code until green. One PR-sized story per session. Claude drafts the failing tests, the user reviews them, then Claude implements.
+- **TDD:** each phase starts with failing golden-file tests (`.md` → expected `.html`) in `MarkdownCore/Tests`, then code until green. One PR-sized story per session. Draft failing tests, implement, and iterate until tests and build pass—without waiting for human approval of the test list first.
 - **MVP scope is the contract.** Out for now: two-way scroll sync, line numbers, theme import or editing, window translucency, plugins, math/Mermaid, PDF/DOCX export, iCloud, sidebar, App Store. A new feature needs a paste-workflow reason.
 - The paste matrix is tested by hand every release from `docs/paste-matrix/fixture.md`, results logged in `docs/paste-matrix/results.md`. Tier 1 (blocks release, wins ties): new Outlook, Outlook for Mac, Teams. Tier 2 (fix when cheap): Word, Gmail web, Apple Mail, Google Docs. Keep the HTML simple (no flex or grid).
 
