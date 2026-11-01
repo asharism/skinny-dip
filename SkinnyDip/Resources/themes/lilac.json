@@ -1,0 +1,38 @@
+{
+  "id": "lilac",
+  "name": "Lilac",
+  "appearance": "light",
+  "pair": "plum",
+  "background": "#e9e2f5",
+  "foreground": "#352e45",
+  "cursor": "#6449b8",
+  "cursorText": "#e9e2f5",
+  "selectionBackground": "#ddd4f2",
+  "selectionForeground": "#352e45",
+  "ansi": [
+    "#352e45",
+    "#b3261e",
+    "#3f7058",
+    "#8a6a00",
+    "#573ea6",
+    "#9a4570",
+    "#2f5fa6",
+    "#f4f4f2",
+    "#958ea8",
+    "#b3261e",
+    "#3f7058",
+    "#8a6a00",
+    "#573ea6",
+    "#9a4570",
+    "#2f5fa6",
+    "#ffffff"
+  ],
+  "skinnyDip": {
+    "windowGradient": [
+      "#e9e2f5",
+      "#e0eaf3"
+    ],
+    "muted": "#665f7c",
+    "accent": "#6449b8"
+  }
+}

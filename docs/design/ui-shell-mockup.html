@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skinny Dip UI Shell</title>
+<!--
+  Standalone copy of the UI Shell mockup (docs/design/ui-shell.md).
+  Interactive: tabs, orientation, maximize, hide/show Preview, Copy split button,
+  scroll-sync toggle, render-option chips and the eight themes.
+  Theme values mirror SkinnyDip/Resources/themes/*.json.
+-->
+<style>
+  :root { --page: #dcdcd8; --ink: #2b2b2b; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #2a2a2a; --ink: #e8e8e8; } }
+  :root[data-theme="dark"] { --page: #2a2a2a; --ink: #e8e8e8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  button { font: inherit; cursor: pointer; }
+  .page { max-width: 1440px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 18px; }
+  h1 { margin: 0; font-size: 22px; }
+  .lede { margin: 0; font-size: 14px; opacity: .8; max-width: 70ch; line-height: 1.5; }
+  .stage { overflow-x: auto; padding-bottom: 6px; }
+  .win { width: 1400px; height: 860px; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 0 0 1px rgba(0,0,0,.18), 0 24px 60px rgba(0,0,0,.22); }
+  .titlebar { height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 0 12px 0 18px; }
+  .lights { display: flex; gap: 8px; }
+  .lights span { width: 12px; height: 12px; border-radius: 6px; }
+  .strip { display: flex; align-items: center; gap: 4px; padding: 3px; border-radius: 12px; margin-left: 10px; flex: 1; min-width: 0; }
+  .tab { border: 0; height: 32px; width: 210px; min-width: 120px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-radius: 9px; font-size: 12.5px; background: transparent; }
+  .tab span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: left; }
+  .dot { width: 7px; height: 7px; border-radius: 4px; flex-shrink: 0; }
+  .tbtn { height: 30px; min-width: 30px; padding: 0 8px; border: 0; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; background: transparent; }
+  .area { flex: 1; min-height: 0; display: flex; gap: 10px; padding: 2px 12px 12px; }
+  .card { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; position: relative; }
+  .head { height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; }
+  .head .name { font-size: 13px; font-weight: 600; }
+  .ibtn { width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; display: flex; align-items: center; justify-content: center; }
+  .body-ed { flex: 1; min-height: 0; overflow: auto; padding: 8px 22px 16px; font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13.5px; line-height: 1.65; }
+  .body-ed .ln { min-height: 1.65em; white-space: pre-wrap; margin: 0 -22px; padding: 0 22px; }
+  .body-pv { flex: 1; min-height: 0; overflow: auto; padding: 6px 30px 20px; font-size: 14.5px; line-height: 1.6; }
+  .body-pv h2 { font-size: 23px; line-height: 1.25; margin: 14px 0 8px; font-weight: 650; }
+  .body-pv h3 { font-size: 17.5px; line-height: 1.3; margin: 18px 0 6px; font-weight: 650; }
+  .body-pv p { margin: 8px 0; }
+  .body-pv table { border-collapse: collapse; margin: 8px 0; font-size: 13.5px; }
+  .body-pv td { padding: 5px 12px; }
+  .body-pv blockquote { margin: 10px 0; padding: 2px 0 2px 14px; }
+  .li { display: flex; gap: 8px; padding-left: 6px; }
+  .li .mk { width: 16px; flex-shrink: 0; }
+  .foot { height: 28px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 11.5px; }
+  .chip { border: 0; padding: 1px 7px; border-radius: 6px; font-size: 11.5px; }
+  .copy { display: flex; align-items: stretch; height: 28px; border-radius: 8px; overflow: hidden; }
+  .copy button { border: 0; background: transparent; color: inherit; display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+  .menu { position: absolute; top: 40px; right: 72px; z-index: 5; width: 250px; padding: 5px; border-radius: 10px; display: flex; flex-direction: column; font-size: 13px; }
+  .menu button { border: 0; background: transparent; display: flex; padding: 6px 10px; border-radius: 6px; text-align: left; }
+  .menu button span:first-child { flex: 1; }
+  .empty { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 13.5px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+  .controls button { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 15px; font-size: 12.5px; border: 1px solid rgba(128,128,128,.4); background: rgba(255,255,255,.55); color: #2b2b2b; }
+  .controls button[aria-pressed="true"] { border-color: #2b2b2b; background: #fff; font-weight: 600; }
+  .sw { width: 14px; height: 14px; border-radius: 7px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); display: inline-block; }
+  .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .tcard { border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 0 1px rgba(0,0,0,.14); }
+  .tcard pre { margin: 0; border-radius: 10px; padding: 10px 12px; font: 12px/1.65 "SF Mono", ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  .chips8 { display: flex; gap: 4px; }
+  .chips8 span { flex: 1; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+  svg { flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Skinny Dip — UI Shell mockup</h1>
+  <p class="lede">Interactive mockup for <code>docs/design/ui-shell.md</code>: Tabs, two Cards, the Copy split button, scroll-sync toggle, render-option chips, and the eight themes. Click around; nothing is wired to real Markdown.</p>
+  <div class="stage"><div id="win" class="win"></div></div>
+  <div class="controls" id="controls"></div>
+  <h1 style="margin-top: 18px">Themes</h1>
+  <p class="lede">Four light/dark pairs. Match System switches between the halves of a pair. Each theme is one token file in <code>SkinnyDip/Resources/themes/</code>.</p>
+  <div class="themes" id="themes"></div>
+</div>
+<script>
+const LIGHT = { card: 'rgba(255,255,255,0.80)', menu: '#ffffff', border: 'rgba(0,0,0,0.08)', border2: 'rgba(0,0,0,0.16)', strip: 'rgba(0,0,0,0.055)', tab: 'rgba(255,255,255,0.95)', shadow: '0 1px 2px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06)', codeBg: 'rgba(0,0,0,0.05)', onAccent: '#ffffff', dark: false };
+const DARK = { card: 'rgba(255,255,255,0.045)', menu: '#262a31', border: 'rgba(255,255,255,0.09)', border2: 'rgba(255,255,255,0.22)', strip: 'rgba(255,255,255,0.06)', tab: 'rgba(255,255,255,0.11)', shadow: '0 1px 2px rgba(0,0,0,0.3)', codeBg: 'rgba(255,255,255,0.07)', onAccent: '#121212', dark: true };
+const THEMES = {
+  'Paper':     { ...LIGHT, pair: 'Ink', a: '#efe9df', b: '#e4ecee', fg: '#2b2b2b', muted: '#67625c', accent: '#a84d26', sel: '#f0ddd2', h: '#943f1b', mk: '#8f8a84', i: '#3c5a78', link: '#2b6797', code: '#55672a' },
+  'Sea Glass': { ...LIGHT, pair: 'Pine', a: '#dcece6', b: '#e7edf4', fg: '#22382f', muted: '#566d66', accent: '#1d7462', sel: '#cfe5dd', h: '#17614f', mk: '#788d87', i: '#4b5e8c', link: '#1d6a8f', code: '#7a5a1e' },
+  'Apricot':   { ...LIGHT, pair: 'Ember', a: '#f5e1d2', b: '#f3ebe0', fg: '#45322a', muted: '#745e53', accent: '#a9491b', sel: '#f2d6c4', h: '#a1431a', mk: '#988278', i: '#7a4f8c', link: '#2f6f8f', code: '#626118' },
+  'Lilac':     { ...LIGHT, pair: 'Plum', a: '#e9e2f5', b: '#e0eaf3', fg: '#352e45', muted: '#665f7c', accent: '#6449b8', sel: '#ddd4f2', h: '#573ea6', mk: '#958ea8', i: '#9a4570', link: '#2f5fa6', code: '#3f7058' },
+  'Ink':       { ...DARK, pair: 'Paper', a: '#0e131b', b: '#171e2a', fg: '#d3dae6', muted: '#8f9bad', accent: '#7aaeff', sel: '#22324a', h: '#8cb8ff', mk: '#5f6c80', i: '#c3a6f0', link: '#6fc3e0', code: '#a6d189' },
+  'Pine':      { ...DARK, pair: 'Sea Glass', a: '#0f1612', b: '#18231c', fg: '#c8d6ca', muted: '#8a9a8c', accent: '#7fcf9f', sel: '#21382b', h: '#8fd6a8', mk: '#5d6e61', i: '#d6c78a', link: '#7fc4d6', code: '#e0a97a' },
+  'Ember':     { ...DARK, pair: 'Apricot', a: '#15100d', b: '#211913', fg: '#e0d0c4', muted: '#a08f83', accent: '#f0955c', sel: '#3e2a1e', h: '#f4a86f', mk: '#736358', i: '#d6b4e0', link: '#8fc0dd', code: '#b9cf86' },
+  'Plum':      { ...DARK, pair: 'Lilac', a: '#130f1a', b: '#1d1727', fg: '#dcd0ec', muted: '#9e93b2', accent: '#c29bff', sel: '#33264a', h: '#cfa9ff', mk: '#6f6684', i: '#f0a6c6', link: '#8fc4f0', code: '#a6d6a6' }
+};
+
+const DOCS = {
+  status: { title: 'status-update.md', dirty: false, words: 64, ln: 7, col: 41, state: 'Saved', hl: 6,
+    lines: [
+      [['h','# Weekly status — Payments']], [],
+      [['t','Hi team,']], [['t','Quick update before Thursday’s review.']], [],
+      [['h','## Shipped']],
+      [['m','- '],['t','Refund flow moved to the '],['b','**new ledger**']],
+      [['m','- '],['t','Retry queue drains in '],['i','*under 2 min*']],
+      [['m','- [x] '],['t','Outlook paste check']], [],
+      [['h','## Next']],
+      [['m','| '],['t','Item'],['m','       | '],['t','Owner'],['m',' | '],['t','Due'],['m','    |']],
+      [['m','|------------|-------|--------|']],
+      [['m','| '],['t','Card vault'],['m',' | '],['t','Priya'],['m',' | '],['t','Nov 7'],['m','  |']],
+      [['m','| '],['t','Alerts'],['m','     | '],['t','Sam'],['m','   | '],['t','Nov 12'],['m',' |']], [],
+      [['q','> Blocked on the vendor sandbox; see '],['l','[DEV-412](https://tracker/DEV-412)'],['q','.']], [],
+      [['t','Thanks,']], [['t','Hitesh']]
+    ],
+    blocks: [
+      ['h1', [['t','Weekly status — Payments']]],
+      ['p', [[['t','Hi team,']], [['t','Quick update before Thursday’s review.']]]],
+      ['h2', [['t','Shipped']]],
+      ['list', [['•', [['t','Refund flow moved to the '],['b','new ledger']]], ['•', [['t','Retry queue drains in '],['i','under 2 min']]], ['☑', [['t','Outlook paste check']]]]],
+      ['h2', [['t','Next']]],
+      ['table', [['Item','Owner','Due'],['Card vault','Priya','Nov 7'],['Alerts','Sam','Nov 12']]],
+      ['quote', [['t','Blocked on the vendor sandbox; see '],['l','DEV-412'],['t','.']]],
+      ['p', [[['t','Thanks,']], [['t','Hitesh']]]]
+    ] },
+  reply: { title: 'reply-to-priya.md', dirty: true, words: 31, ln: 6, col: 46, state: 'Edited', hl: 5,
+    lines: [
+      [['t','Hi Priya,']], [], [['t','Thanks for the notes. Two things:']], [],
+      [['m','1. '],['t','The '],['b','**migration**'],['t',' runs Sunday night']],
+      [['m','2. '],['t','Rollback is a single flag: '],['c','`ledger.v2=false`']], [],
+      [['t','Shout if Monday looks risky.']], [['t','Hitesh']]
+    ],
+    blocks: [
+      ['p', [[['t','Hi Priya,']]]], ['p', [[['t','Thanks for the notes. Two things:']]]],
+      ['list', [['1.', [['t','The '],['b','migration'],['t',' runs Sunday night']]], ['2.', [['t','Rollback is a single flag: '],['c','ledger.v2=false']]]]],
+      ['p', [[['t','Shout if Monday looks risky.']], [['t','Hitesh']]]]
+    ] },
+  untitled: { title: 'Untitled', dirty: false, words: 0, ln: 1, col: 1, state: 'Not saved', hl: -1, lines: [], blocks: [] }
+};
+
+const S = { tab: 'status', theme: 'Paper', dir: 'row', zoom: null, hidden: false, menu: false, copied: null, sync: true,
+            opts: { 'Headings −1': true, 'Table borders': true, 'Line breaks': true } };
+let timer;
+
+const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const ico = {
+  doc: '<path d="M4 1.5h5l3 3v10H4z"/><path d="M9 1.5v3h3"/>',
+  md: '<path d="M2 4.5h12v7H2z"/><path d="M4 9.5v-3l1.5 1.5L7 6.5v3M10.5 6.5v3M9 8l1.5 1.5L12 8"/>',
+  eye: '<path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>',
+  rows: '<rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M1.5 8h13"/>',
+  cols: '<rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M8 2.5v11"/>',
+  max: '<path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5 9 7M2.5 13.5 7 9"/>',
+  min: '<path d="M13.5 6.5h-4v-4M2.5 9.5h4v4M9.5 6.5 14 2M6.5 9.5 2 14"/>',
+  x: '<path d="M4 4l8 8M12 4l-8 8"/>',
+  copy: '<rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/>',
+  check: '<path d="M3 8.5l3 3 7-7"/>',
+  chev: '<path d="M4 6l4 4 4-4"/>',
+  link: '<path d="M6.5 9.5l3-3M7 4.5l1-1a2.8 2.8 0 0 1 4 4l-1 1M9 11.5l-1 1a2.8 2.8 0 0 1-4-4l1-1"/>',
+  plus: '<path d="M8 3v10M3 8h10"/>',
+  side: '<rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M10 2.5v11"/>'
+};
+const svg = (n, size = 16, stroke = 'currentColor', w = 1.5) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 16 16" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ico[n]}</svg>`;
+
+function render() {
+  const t = THEMES[S.theme], d = DOCS[S.tab];
+  const ed = { h: `color:${t.h};font-weight:600`, m: `color:${t.mk}`, t: `color:${t.fg}`, b: `color:${t.fg};font-weight:700`,
+               i: `color:${t.i};font-style:italic`, l: `color:${t.link}`, c: `color:${t.code}`, q: `color:${t.muted};font-style:italic` };
+  const pv = { t: '', b: 'font-weight:650', i: 'font-style:italic', l: `color:${t.link};text-decoration:underline;text-underline-offset:2px`,
+               c: `font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;padding:1px 5px;border-radius:4px;background:${t.codeBg}` };
+  const runs = (rs) => rs.map(([k, s]) => `<span style="${pv[k]}">${esc(s)}</span>`).join('');
+  const showEd = S.zoom !== 'preview', showPv = !S.hidden && S.zoom !== 'editor';
+  const selection = false;
+
+  const tabs = Object.entries(DOCS).map(([id, doc]) => {
+    const on = id === S.tab;
+    return `<button class="tab" data-tab="${id}" aria-label="${esc(doc.title)}" style="color:${on ? t.fg : t.muted};${on ? `background:${t.tab};box-shadow:0 0 0 1px ${t.border},0 1px 3px rgba(0,0,0,.08);font-weight:600` : 'font-weight:500'}">
+      <span style="opacity:.75">${svg('doc', 14)}</span><span class="t">${esc(doc.title)}</span>
+      ${doc.dirty ? `<span class="dot" style="background:${t.muted}" aria-label="Edited"></span>` : ''}
+      ${on ? `<span style="opacity:.55">${svg('x', 12, 'currentColor', 1.6)}</span>` : ''}</button>`;
+  }).join('');
+
+  const edLines = d.lines.length === 0
+    ? `<div style="color:${t.muted}"><span style="display:inline-block;width:2px;height:1.2em;vertical-align:-.2em;background:${t.accent};margin-right:6px"></span>Start typing Markdown. ⌘V turns rich text into Markdown.</div>`
+    : d.lines.map((segs, i) => `<div class="ln" style="background:${i === d.hl ? t.sel : 'transparent'}">${segs.map(([k, s]) => `<span style="${ed[k]}">${esc(s)}</span>`).join('')}</div>`).join('');
+
+  const pvBody = d.blocks.length === 0
+    ? `<div class="empty" style="color:${t.muted}">Your formatted text appears here.</div>`
+    : d.blocks.map(([k, v]) => {
+        if (k === 'h1') return `<h2>${runs(v)}</h2>`;
+        if (k === 'h2') return `<h3>${runs(v)}</h3>`;
+        if (k === 'p') return `<p>${v.map((l, i) => runs(l) + (i < v.length - 1 && S.opts['Line breaks'] ? '<br>' : ' ')).join('')}</p>`;
+        if (k === 'list') return `<div style="margin:6px 0;display:flex;flex-direction:column;gap:3px">${v.map(([mk, r]) => `<div class="li"><span class="mk" style="color:${t.muted}">${mk}</span><span>${runs(r)}</span></div>`).join('')}</div>`;
+        if (k === 'table') { const bd = S.opts['Table borders'] ? `border:1px solid ${t.border2}` : 'border:0'; return `<table><tbody>${v.map((row, ri) => `<tr>${row.map((c) => `<td style="${bd};${ri === 0 ? 'font-weight:650' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`; }
+        if (k === 'quote') return `<blockquote style="border-left:3px solid ${t.border2};color:${t.muted}">${runs(v)}</blockquote>`;
+        return '';
+      }).join('');
+
+  const copyLabel = S.copied ? `Copied ${S.copied}` : (selection ? 'Copy Selection' : 'Copy as Rich Text');
+  const empty = d.lines.length === 0;
+  const chips = Object.entries(S.opts).map(([name, on]) =>
+    `<button class="chip" data-chip="${esc(name)}" aria-pressed="${on}" style="background:${on ? t.strip : 'transparent'};color:${on ? t.fg : t.muted};${on ? '' : 'text-decoration:line-through'}">${esc(name)}</button>`).join('');
+
+  const card = `background:${t.card};box-shadow:0 0 0 1px ${t.border},${t.shadow}`;
+  document.getElementById('win').style.cssText = `background:linear-gradient(140deg,${t.a} 0%,${t.b} 100%);color:${t.fg}`;
+  document.getElementById('win').innerHTML = `
+    <div class="titlebar">
+      <div class="lights" aria-hidden="true"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div>
+      <div class="strip" style="background:${t.strip}">${tabs}</div>
+      ${S.hidden ? `<button class="tbtn" data-act="show" style="background:${t.strip};color:${t.fg}">${svg('side', 15)} Show Preview</button>` : ''}
+      <button class="tbtn" aria-label="New Tab" style="color:${t.muted}">${svg('plus', 16, 'currentColor', 1.6)}</button>
+    </div>
+    <div class="area" style="flex-direction:${S.dir}">
+      ${showEd ? `<section class="card" aria-label="Editor" style="${card}">
+        <div class="head">${svg('md', 16, t.accent)}<span class="name">${esc(d.title)}</span><span style="font-size:12px;color:${t.muted}">Markdown</span><div style="flex:1"></div>
+          <button class="ibtn" data-act="dir" aria-label="${S.dir === 'row' ? 'Stack Cards' : 'Side by side'}" title="${S.dir === 'row' ? 'Stack Cards' : 'Side by side'}" style="color:${t.muted}">${svg(S.dir === 'row' ? 'rows' : 'cols')}</button>
+          <button class="ibtn" data-act="zoomEd" aria-label="${S.zoom === 'editor' ? 'Restore' : 'Maximize Editor'}" style="color:${t.muted}">${svg(S.zoom === 'editor' ? 'min' : 'max', 15)}</button>
+        </div>
+        <div class="body-ed">${edLines}</div>
+        <div class="foot" style="color:${t.muted};border-top:1px solid ${t.border}"><span>${d.words} words</span><span style="margin-left:6px">Ln ${d.ln}, Col ${d.col}</span><div style="flex:1"></div><span>${d.state}</span></div>
+      </section>` : ''}
+      ${showPv ? `<section class="card" aria-label="Preview" style="${card}">
+        <div class="head">${svg('eye', 16, t.accent)}<span class="name">Preview</span><div style="flex:1"></div>
+          <div class="copy" style="background:${S.copied ? t.code : t.accent};color:${t.onAccent};opacity:${empty ? .45 : 1}">
+            <button data-act="copy" ${empty ? 'disabled' : ''} style="padding:0 10px;font-weight:600">${svg(S.copied ? 'check' : 'copy', 14, 'currentColor', S.copied ? 2 : 1.6)}<span>${copyLabel}</span><span style="opacity:.7;font-weight:500">⌘C</span></button>
+            <button data-act="menu" aria-label="More copy formats" style="width:24px;justify-content:center;border-left:1px solid ${t.dark ? 'rgba(0,0,0,.25)' : 'rgba(255,255,255,.35)'}">${svg('chev', 12, 'currentColor', 1.8)}</button>
+          </div>
+          <button class="ibtn" data-act="sync" aria-pressed="${S.sync}" aria-label="Scroll sync" title="Scroll sync ${S.sync ? 'on' : 'off'}" style="background:${S.sync ? t.strip : 'transparent'};color:${S.sync ? t.accent : t.muted}">${svg('link', 15)}</button>
+          <button class="ibtn" data-act="zoomPv" aria-label="${S.zoom === 'preview' ? 'Restore' : 'Maximize Preview'}" style="color:${t.muted}">${svg(S.zoom === 'preview' ? 'min' : 'max', 15)}</button>
+          <button class="ibtn" data-act="hide" aria-label="Hide Preview (⇧⌘P)" title="Hide Preview (⇧⌘P)" style="color:${t.muted}">${svg('x', 13, 'currentColor', 1.7)}</button>
+        </div>
+        ${S.menu ? `<div class="menu" style="background:${t.menu};box-shadow:0 0 0 1px ${t.border},0 12px 32px rgba(0,0,0,.22)">
+          ${[['rich text', 'Copy as Rich Text', '⌘C'], ['Markdown', 'Copy as Markdown', '⇧⌘C'], ['HTML', 'Copy as HTML', '⌥⌘C']].map(([k, l, key]) =>
+            `<button data-copy="${k}" style="color:${t.fg}"><span>${l}</span><span style="color:${t.muted}">${key}</span></button>`).join('')}
+        </div>` : ''}
+        <div class="body-pv">${pvBody}</div>
+        <div class="foot" style="color:${t.muted};border-top:1px solid ${t.border}"><span style="margin-right:2px">Copies with</span>${chips}<div style="flex:1"></div><span>${S.sync ? 'Scroll sync' : 'Scroll sync off'}</span></div>
+      </section>` : ''}
+    </div>`;
+
+  document.getElementById('controls').innerHTML = '<strong>Theme</strong>' + Object.entries(THEMES).map(([name, th]) =>
+    `<button data-theme="${esc(name)}" aria-pressed="${name === S.theme}"><span class="sw" style="background:${th.a}"></span><span class="sw" style="width:8px;height:8px;background:${th.accent}"></span>${esc(name)}</button>`).join('');
+}
+
+function flash(kind) {
+  S.copied = kind; S.menu = false; render();
+  clearTimeout(timer); timer = setTimeout(() => { S.copied = null; render(); }, 1400);
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-tab],[data-act],[data-copy],[data-theme],[data-chip]');
+  if (!el) return;
+  if (el.dataset.tab) { S.tab = el.dataset.tab; S.menu = false; }
+  else if (el.dataset.theme) S.theme = el.dataset.theme;
+  else if (el.dataset.chip) S.opts[el.dataset.chip] = !S.opts[el.dataset.chip];
+  else if (el.dataset.copy) return flash(el.dataset.copy);
+  else switch (el.dataset.act) {
+    case 'dir': S.dir = S.dir === 'row' ? 'column' : 'row'; break;
+    case 'zoomEd': if (!S.hidden) S.zoom = S.zoom === 'editor' ? null : 'editor'; break;
+    case 'zoomPv': S.zoom = S.zoom === 'preview' ? null : 'preview'; break;
+    case 'hide': S.hidden = true; S.zoom = null; S.menu = false; break;
+    case 'show': S.hidden = false; break;
+    case 'menu': S.menu = !S.menu; break;
+    case 'sync': S.sync = !S.sync; break;
+    case 'copy': return flash('rich text');
+  }
+  render();
+});
+
+document.getElementById('themes').innerHTML = Object.entries(THEMES).map(([name, t]) => `
+  <div class="tcard" style="background:linear-gradient(140deg,${t.a},${t.b});color:${t.fg}">
+    <div><strong>${esc(name)}</strong> <span style="font-size:12px;color:${t.muted}">${t.dark ? 'Dark' : 'Light'} · pairs with ${esc(t.pair)}</span></div>
+    <pre style="background:${t.card};box-shadow:0 0 0 1px ${t.border}"><span style="color:${t.h};font-weight:600"># Weekly status</span>
+<span style="color:${t.mk}">- </span>Moved to the <b>**ledger**</b>
+<span style="color:${t.mk}">- </span><span style="color:${t.i};font-style:italic">*under 2 min*</span> and <span style="color:${t.code}">\`v2\`</span>
+<span style="background:${t.sel}"><span style="color:${t.muted};font-style:italic">&gt; see </span><span style="color:${t.link}">[DEV-412](…)</span></span></pre>
+    <div class="chips8">${[t.a, t.fg, t.accent, t.h, t.i, t.link, t.code, t.mk].map((c) => `<span style="background:${c}"></span>`).join('')}</div>
+  </div>`).join('');
+
+render();
+</script>
+</body>
+</html>

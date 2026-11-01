@@ -1,0 +1,38 @@
+{
+  "id": "paper",
+  "name": "Paper",
+  "appearance": "light",
+  "pair": "ink",
+  "background": "#efe9df",
+  "foreground": "#2b2b2b",
+  "cursor": "#a84d26",
+  "cursorText": "#efe9df",
+  "selectionBackground": "#f0ddd2",
+  "selectionForeground": "#2b2b2b",
+  "ansi": [
+    "#2b2b2b",
+    "#b3261e",
+    "#55672a",
+    "#8a6a00",
+    "#943f1b",
+    "#3c5a78",
+    "#2b6797",
+    "#f4f4f2",
+    "#8f8a84",
+    "#b3261e",
+    "#55672a",
+    "#8a6a00",
+    "#943f1b",
+    "#3c5a78",
+    "#2b6797",
+    "#ffffff"
+  ],
+  "skinnyDip": {
+    "windowGradient": [
+      "#efe9df",
+      "#e4ecee"
+    ],
+    "muted": "#67625c",
+    "accent": "#a84d26"
+  }
+}

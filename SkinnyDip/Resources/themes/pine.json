@@ -1,0 +1,38 @@
+{
+  "id": "pine",
+  "name": "Pine",
+  "appearance": "dark",
+  "pair": "sea-glass",
+  "background": "#0f1612",
+  "foreground": "#c8d6ca",
+  "cursor": "#7fcf9f",
+  "cursorText": "#0f1612",
+  "selectionBackground": "#21382b",
+  "selectionForeground": "#c8d6ca",
+  "ansi": [
+    "#1c2230",
+    "#e5737a",
+    "#e0a97a",
+    "#e0c070",
+    "#8fd6a8",
+    "#d6c78a",
+    "#7fc4d6",
+    "#c8d6ca",
+    "#5d6e61",
+    "#e5737a",
+    "#e0a97a",
+    "#e0c070",
+    "#8fd6a8",
+    "#d6c78a",
+    "#7fc4d6",
+    "#f2f2f2"
+  ],
+  "skinnyDip": {
+    "windowGradient": [
+      "#0f1612",
+      "#18231c"
+    ],
+    "muted": "#8a9a8c",
+    "accent": "#7fcf9f"
+  }
+}

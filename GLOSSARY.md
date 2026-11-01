@@ -9,8 +9,26 @@ A document's text exactly as the user typed it; the source of truth that Skinny 
 _Avoid_: raw text, plain text, model
 
 **Preview**:
-The side-by-side rendering of the Markdown Source, showing the structure Copy as Rich Text will paste, in Skinny Dip's own theme rather than the destination's.
+The live rendering of the Markdown Source in its own Card, showing the structure Copy as Rich Text will paste, in Skinny Dip's own theme rather than the destination's.
 _Avoid_: viewer, render pane
+
+## Window
+
+**Tab**:
+One open Markdown document in the window's Tab strip; each Tab has its own Editor and Preview Cards.
+_Avoid_: window, pane, workspace
+
+**Card**:
+One of the two floating rounded panels in a Tab, the Editor Card or the Preview Card, each with a header and a footer.
+_Avoid_: pane, panel, block
+
+**Theme**:
+A named palette (window tint, text, accent, syntax colors) applied to the window, the Cards, the Editor and the Preview, never to the clipboard; themes come in light/dark pairs.
+_Avoid_: skin, color scheme
+
+**Scroll Sync**:
+The Preview following the Editor's scroll position, block by block; one-way, Editor to Preview.
+_Avoid_: linked scrolling
 
 ## Copying out
 
