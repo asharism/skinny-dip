@@ -22,6 +22,11 @@ targets:
     supportedDestinations: [macOS, iOS]
     sources:
       - path: SkinnyDip
+        excludes:
+          - Editor/web/**
+      - path: SkinnyDip/Resources
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: MarkdownCore
     settings:
@@ -52,6 +57,25 @@ targets:
         LSSupportsOpeningDocumentsInPlace: true
         UISupportsDocumentBrowser: true
 
+  # Hosted in the app so tests reach app-target code (clipboard, settings) with
+  # @testable import. Mac only for now.
+  SkinnyDipTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: SkinnyDipTests
+    dependencies:
+      - target: SkinnyDip
+      - package: MarkdownCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hitesh.SkinnyDipTests
+        GENERATE_INFOPLIST_FILE: YES
+        "CODE_SIGN_IDENTITY[sdk=macosx*]": "-"
+        # XcodeGen derives an iOS-style path from the multiplatform app target.
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/SkinnyDip.app/Contents/MacOS/SkinnyDip
+        BUNDLE_LOADER: $(TEST_HOST)
+
 schemes:
   SkinnyDip:
     build:
@@ -60,3 +84,4 @@ schemes:
     test:
       targets:
         - package: MarkdownCore/MarkdownCoreTests
+        - SkinnyDipTests

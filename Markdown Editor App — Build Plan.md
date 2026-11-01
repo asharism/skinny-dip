@@ -58,39 +58,30 @@ Packages/MarkdownCore/
 | --- | --- | --- |
 | Min OS | macOS 26, iOS/iPadOS 26 | Native SwiftUI `WebView`/`WebPage`; newest `TextEditor` APIs |
 | Parser | Apple `swift-markdown` (cmark-gfm inside) | GFM tables, task lists; AST visitor for custom HTML |
-| Editor | Decided by the editor spike before P2 | STTextView (native) vs CodeMirror 6 in a web view; see next section |
+| Editor | CodeMirror 6 in a `WKWebView` (ADR-0003) | MIT; multi-cursor built in; see next section |
 | Preview | SwiftUI `WebView` + bundled HTML/CSS/JS | No network; JS bridge for `render()` only |
 | Tests | `swift test` (core), `xcodebuild test` (UI smoke) | Core tests run fast, CLI-friendly for Claude Code |
 
 ## Editor, BBEdit/Sublime grade
 
-**Decision pending: editor spike before P2.** Research (`docs/research/editor-engines.md`) left two candidates that meet the hard requirements (Sublime-style multi-cursor on the Mac, non-WYSIWYG, smooth on 10k lines):
-
-- [STTextView](https://github.com/krzyzanowskim/STTextView): native TextKit 2 view, multi-cursor built in. GPL-3.0 or paid commercial license.
-- CodeMirror 6 in a web view, as [MarkEdit](https://github.com/MarkEdit-app/MarkEdit) does: MIT, best multi-cursor, but a JS↔Swift bridge for undo/find/select-all, fragile Writing Tools, hundreds of MB per window.
-
-The spike builds a throwaway Mac app per candidate and scores both on: spell check and autocorrect, dictation, Writing Tools, ⌘D / add cursor above-below / ⌘-click, typing feel on a 10k-line file, memory. Ruled out: WYSIWYG engines (no multi-cursor, rewrite the source; ADR-0002), plain `NSTextView` (cannot hold multiple empty carets), CodeEditTextView (no ⌘D, Mac-only, pre-1.0; fallback only if both fail).
-
-Multi-cursor is a Mac requirement only; the iOS editor (P6) is a plain native text view.
-
-If STTextView wins, the table below is how the pro features land:
+**Decision: CodeMirror 6 in a `WKWebView`** (ADR-0003, issue #1). All three candidates were built as kept evaluation apps in `Spikes/Editors/` (Apple `NSTextView`, STTextView, CodeMirror 6) and tried on the same 10,000-line document. CodeMirror is the only one with full Sublime-style multi-cursor under a permissive license, and it felt fastest. It costs the most memory (≈254 MB with its WebKit processes vs 65–74 MB native) and needs a Swift↔JS bridge.
 
 | Pro-editor feature | How |
 | --- | --- |
-| Large files, smooth scroll | TextKit 2 viewport layout (STTextView) |
-| Line numbers, current-line highlight, invisibles, wrap toggle | STTextView built-ins |
-| Multi-cursor | STTextView built-in; we add Sublime keys: ⌘D add next match, ⌃⇧↑/↓ add cursor above/below |
-| Find and replace | STTextView incremental search; our own regex find bar later |
-| Markdown syntax coloring | tree-sitter Markdown grammars via [SwiftTreeSitter](https://github.com/ChimeHQ/SwiftTreeSitter), styled by [Neon](https://github.com/slsrepo/Neon) (moved from ChimeHQ; visible range first, incremental) |
-| Coloring inside code fences | tree-sitter language injections (Swift, Python, TypeScript, JSON, SQL) |
-| List continuation, smart indent, auto-pairing | Our key handlers: Return continues ` -  ` / `1.` / `- [ ]`, Tab/⇧Tab indents list items |
-| Spelling, dictation, native navigation, Services | STTextView macOS text-system integration |
+| Large files, smooth scroll | CodeMirror renders only the viewport; Lezer parses incrementally |
+| Multi-cursor | Built in: ⌘D next occurrence, ⌘-click, ⌘⌥↑/↓; we add ⌃⇧↑/↓ (macOS may intercept it) |
+| Markdown syntax coloring | `@codemirror/lang-markdown` (GFM); code-fence languages via `@codemirror/language-data` later |
+| List continuation, smart indent | `insertNewlineContinueMarkup` and indent commands from lang-markdown |
+| Find and replace | CodeMirror's search panel on ⌘F |
+| Spelling, autocorrect, Writing Tools | WebKit `contenteditable` attributes + `writingToolsBehavior`; verify in the real app |
+| Undo, edited state, Select All, Edit menu | Bridged to Swift by us (MarkEdit is the MIT reference) |
 
 **Caveats**
 
-- STTextView is GPL-3.0 or paid commercial. The repo can stay MIT; a distributed build is GPL-3.0 as a whole, so its source must stay public. Closed source or the Mac App Store needs the commercial license. Accepted if STTextView wins.
-- Neon's main branch is beta, and its author notes flicker-free per-keystroke highlighting is hard on TextKit 2. Mitigation: a cheap regex pass for the edited line, tree-sitter async for the rest.
-- Whichever editor wins, it is the biggest chunk of work; P2 and P5 grow accordingly.
+- The bridge is ours to own: undo grouping, document edited state, Select All past the viewport, the Edit menu and right-click menu.
+- WebKit IME bugs (MarkEdit #956, #358) and Writing Tools changes arrive with macOS releases; re-run the spike apps after each one.
+- The editor bundle is built with esbuild from pinned packages and checked in; the app builds without Node.
+- The editor is the biggest chunk of work; P2 and P5 grow accordingly.
 
 ## Copy-to-destination pipeline
 
@@ -165,7 +156,7 @@ Seven phases, each closed by a testable gate. P2 is the payoff: write, ⌘C, pas
 | --- | --- | --- |
 | P0 | Xcode multiplatform app + `MarkdownCore` package + `swift-markdown` | First red test (`# Hello` → `<h1>Hello</h1>`) goes green |
 | P1 | Renderer: GFM, rendering rules above, Selection Copy | Golden tests pass for every element and rule |
-| — | Editor spike: STTextView vs CodeMirror 6 | Editor chosen, ADR written |
+| ✓ | Editor spike: NSTextView vs STTextView vs CodeMirror 6 | Done: CodeMirror 6, ADR-0003 |
 | P2 | Mac shell: DocumentGroup, editor, Copy as Rich Text / Markdown / HTML | First paste matrix run; Tier 1 passes |
 | P3 | Live preview: `WebView`, `render(html)`, debounce, scroll kept, highlight.js | Preview updates without flashing on a 10k-line file |
 | P4 | Paste as Markdown (HTML → Markdown converter) | Golden tests for pasted Outlook/Word/web HTML |
@@ -200,7 +191,7 @@ Seven phases, each closed by a testable gate. P2 is the payoff: write, ⌘C, pas
 
 **Open questions**
 
-- [ ] Editor engine: STTextView vs CodeMirror 6, decided by the editor spike before P2.
+- [x] Editor engine: CodeMirror 6 in a web view (ADR-0003).
 - [x] Paste targets: Tier 1 new Outlook, Outlook for Mac, Teams; Tier 2 Word, Gmail, Apple Mail, Google Docs.
 - [x] Table borders: on by default. Heading demotion: on; `h6` stays `h6`.
 - [x] Raw HTML in Markdown: escaped.

@@ -1,0 +1,152 @@
+<title>Skinny Dip Editor Decision</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,650&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column, a verdict block, a to-scale memory chart, then evidence and next steps as tables. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1c2230;
+  --muted: #5b6475;
+  --rule: #dde1e8;
+  --accent: #2f5d8a;
+  --accent-soft: #e4edf6;
+  --app: #2f5d8a;
+  --webcontent: #7c9cc0;
+  --helpers: #b9cbe0;
+  --good: #2e7d4f;
+  --warn: #9a6a12;
+  --bad: #a33a3a;
+  --display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1a2029; --fg: #e3e7ee; --muted: #9aa4b5; --rule: #2c3442;
+    --accent: #8fb5dd; --accent-soft: #1f2c3b; --app: #8fb5dd; --webcontent: #5c7ea6; --helpers: #3c5470;
+    --good: #6cc391; --warn: #d9a84a; --bad: #e07a7a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a2029; --fg: #e3e7ee; --muted: #9aa4b5; --rule: #2c3442;
+  --accent: #8fb5dd; --accent-soft: #1f2c3b; --app: #8fb5dd; --webcontent: #5c7ea6; --helpers: #3c5470;
+  --good: #6cc391; --warn: #d9a84a; --bad: #e07a7a; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.page { max-width: 760px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 36px; }
+header { display: grid; gap: 10px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+h1 { font-family: var(--display); font-weight: 650; font-size: clamp(28px, 5vw, 38px); line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 650; font-size: 21px; margin: 0 0 12px; text-wrap: balance; }
+p { margin: 0; max-width: 65ch; }
+section { display: grid; gap: 12px; }
+.verdict { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 18px 20px; display: grid; gap: 8px; }
+.verdict strong { font-family: var(--display); font-size: 20px; font-weight: 650; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 65ch; }
+code { font-family: var(--mono); font-size: 0.9em; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chosen td:first-child { font-weight: 600; }
+.yes { color: var(--good); } .part { color: var(--warn); } .no { color: var(--bad); }
+.chart { background: var(--surface); border: 1px solid var(--rule); padding: 18px 20px 14px; display: grid; gap: 14px; }
+.bar-row { display: grid; grid-template-columns: 96px 1fr 64px; align-items: center; gap: 12px; font-size: 13px; }
+.bar-row .label { font-weight: 500; }
+.bar-row .total { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.track { position: relative; height: 18px; display: flex; background-image: linear-gradient(to right, var(--rule) 1px, transparent 1px); background-size: 38.46% 100%; }
+.seg { height: 100%; }
+.seg.app { background: var(--app); } .seg.wc { background: var(--webcontent); } .seg.help { background: var(--helpers); }
+.axis { display: grid; grid-template-columns: 96px 1fr 64px; gap: 12px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.axis .ticks { position: relative; height: 14px; }
+.axis .ticks span { position: absolute; transform: translateX(-50%); }
+.axis .ticks span:first-child { transform: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+.note { font-size: 13px; color: var(--muted); }
+.status { font-family: var(--mono); font-size: 11px; padding: 2px 6px; border: 1px solid var(--rule); white-space: nowrap; }
+@media (max-width: 480px) {
+  .bar-row, .axis { grid-template-columns: 72px 1fr 54px; gap: 8px; }
+}
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow"><span>ADR-0003</span><span>Accepted 2026-10-31</span><span>Issue #1</span></div>
+    <h1>The Mac editor is CodeMirror 6</h1>
+    <p>Skinny Dip needed a Markdown editor with Sublime-style multi-cursor, fast on large files, under a license that keeps the project open. Three engines were built as evaluation apps and tried on the same 10,000-line document.</p>
+  </header>
+
+  <div class="verdict">
+    <strong>CodeMirror 6, running in a WKWebView</strong>
+    <p>It is the only engine with ⌘D, add-cursor-above/below and ⌘-click built in, it is MIT-licensed, and it felt fastest in hand testing. It costs the most memory and needs a Swift↔JS bridge, both accepted.</p>
+  </div>
+
+  <section>
+    <h2>The three candidates</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Engine</th><th>License</th><th>⌘D</th><th>Cursor ↑/↓</th><th>⌘-click</th><th>Memory</th></tr></thead>
+        <tbody>
+          <tr><td>Apple NSTextView</td><td>Apple SDK</td><td class="no">No</td><td class="no">No</td><td class="no">No</td><td class="num">65 MB</td></tr>
+          <tr><td>STTextView 2.4.1</td><td>GPL-3.0 or paid</td><td class="part">We wired it</td><td class="part">We wired it</td><td class="part">We wired it</td><td class="num">74 MB</td></tr>
+          <tr class="chosen"><td>CodeMirror 6</td><td>MIT</td><td class="yes">Built in</td><td class="yes">Built in</td><td class="yes">Built in</td><td class="num">≈254 MB</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">NSTextView can't hold more than one empty caret (Apple's <code>selectedRanges</code> rule). STTextView has multiple carets but only adds them with ⌃⇧-click; the other gestures needed our own subclass.</p>
+  </section>
+
+  <section>
+    <h2>Memory, one document open</h2>
+    <div class="chart" role="img" aria-label="Memory footprint: NSTextView 65 MB, STTextView 74 MB, CodeMirror 254 MB of which 83 MB app, 147 MB WebContent, 24 MB GPU and networking.">
+      <div class="bar-row"><span class="label">NSTextView</span><div class="track"><div class="seg app" style="width:25%"></div></div><span class="total">65 MB</span></div>
+      <div class="bar-row"><span class="label">STTextView</span><div class="track"><div class="seg app" style="width:28.46%"></div></div><span class="total">74 MB</span></div>
+      <div class="bar-row"><span class="label">CodeMirror</span><div class="track"><div class="seg app" style="width:31.92%"></div><div class="seg wc" style="width:56.54%"></div><div class="seg help" style="width:9.23%"></div></div><span class="total">254 MB</span></div>
+      <div class="axis"><span></span><div class="ticks"><span style="left:0">0</span><span style="left:38.46%">100</span><span style="left:76.92%">200 MB</span></div><span></span></div>
+      <div class="legend"><span><i style="background:var(--app)"></i>App process</span><span><i style="background:var(--webcontent)"></i>WebKit content</span><span><i style="background:var(--helpers)"></i>WebKit GPU + networking</span></div>
+    </div>
+    <p class="note">Measured with <code>footprint</code> on macOS 27.0, Xcode 27.2. The spike apps' status bars show only the app process, which made CodeMirror look smallest. The live Preview needs a web view anyway, so some of this cost is shared (issue #9).</p>
+  </section>
+
+  <section>
+    <h2>What we accept</h2>
+    <ul>
+      <li>We own the bridge between CodeMirror and macOS: undo and the document's edited state, Select All beyond the visible part, the Edit and right-click menus. MarkEdit, an MIT Mac editor built the same way, is the reference.</li>
+      <li>Spell check, autocorrect and Writing Tools come through WebKit, not the native text system. They were not scored one by one in the spike and get checked in the real app (issue #6).</li>
+      <li>WebKit input-method bugs and Writing Tools changes arrive with macOS releases. The three evaluation apps stay in <code>Spikes/Editors/</code> so the comparison can be re-run.</li>
+      <li>Copy stays pure Swift (ADR-0001). The editor reports text and selection; it never writes the clipboard.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>What happens next</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Issue</th><th>Work</th><th>Owner</th></tr></thead>
+        <tbody>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/2">#2</a></td><td>P2: Embed CodeMirror 6 as the Mac editor</td><td><span class="status">agent</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/3">#3</a></td><td>P2: Bridge undo, redo and edited state</td><td><span class="status">agent</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/4">#4</a></td><td>P2: Route editor copy, cut and right-click through the copy commands</td><td><span class="status">agent</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/5">#5</a></td><td>P2: Open an untitled document on launch</td><td><span class="status">agent</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/6">#6</a></td><td>P2: Check spell check, dictation and Writing Tools in the real editor</td><td><span class="status">you</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/7">#7</a></td><td>P2 gate: First paste matrix run</td><td><span class="status">you</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/8">#8</a></td><td>Decide: what copy does with multiple selections</td><td><span class="status">you</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/9">#9</a></td><td>Decide: Preview web view setup and code-block language hint</td><td><span class="status">you</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/10">#10</a></td><td>P3: Live Preview</td><td><span class="status">agent</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/11">#11</a></td><td>P4: HTML → Markdown converter</td><td><span class="status">agent</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/12">#12</a></td><td>P4: Paste as Markdown on ⌘V</td><td><span class="status">agent</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/13">#13</a></td><td>P5: Editor quality: Markdown theme, list continuation, indent</td><td><span class="status">agent</span></td></tr>
+          <tr><td class="num"><a href="https://github.com/asharism/skinny-dip/issues/14">#14</a></td><td>P6: iPad and iPhone</td><td><span class="status">triage</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
