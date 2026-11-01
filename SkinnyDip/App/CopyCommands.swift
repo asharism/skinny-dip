@@ -8,9 +8,19 @@ import MarkdownCore
 /// what the app is for; the plain system Copy would paste unformatted Markdown.
 struct CopyCommands: Commands {
     @FocusedValue(\.copySource) private var source
+    @FocusedValue(\.editorHistoryMenuState) private var historyMenuState
     var clipboard: any Clipboard = MacClipboard()
 
     var body: some Commands {
+        CommandGroup(replacing: .undoRedo) {
+            Button("Undo") { send(Self.undoSelector) }
+                .keyboardShortcut("z")
+                .disabled(!(historyMenuState?.canUndo ?? false))
+            Button("Redo") { send(Self.redoSelector) }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+                .disabled(!(historyMenuState?.canRedo ?? false))
+        }
+
         // Replacing the group drops the system Cut, Paste and friends too, so they
         // come back here as first-responder actions, which every text view handles.
         CommandGroup(replacing: .pasteboard) {
@@ -50,5 +60,8 @@ struct CopyCommands: Commands {
     private func send(_ action: Selector) {
         NSApp.sendAction(action, to: nil, from: nil)
     }
+
+    private static let undoSelector = Selector("skinyDipUndo:")
+    private static let redoSelector = Selector("skinyDipRedo:")
 }
 #endif
