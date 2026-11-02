@@ -2,6 +2,7 @@
 import AppKit
 import Testing
 import WebKit
+import MarkdownCore
 @testable import SkinnyDip
 
 /// Issue #6: verify native text wiring in the bundled CodeMirror editor (WKWebView + JS).
@@ -95,6 +96,77 @@ struct EditorNativeTextTests {
         let source = try String(contentsOf: url, encoding: .utf8)
         #expect(source.contains("ensureWritingToolsSelection"))
         #expect(source.contains("focusEditor"))
+    }
+}
+
+/// P4 Paste as Markdown, through the real `EditorWebView` and bundled
+/// CodeMirror, reading a private pasteboard instead of the user's clipboard.
+@MainActor
+struct EditorPasteTests {
+    private let pasteboard = NSPasteboard(name: .init("SkinnyDipTests.paste.\(UUID().uuidString)"))
+
+    @Test func pastingRichTextInsertsMarkdown() async throws {
+        let harness = try await AppKitEditorHarness.load(pasteboard: pasteboard)
+        defer { harness.teardown(); pasteboard.releaseGlobally() }
+        try await harness.setDocument("Intro\n")
+        try await harness.setSelection(from: 6, to: 6)
+
+        write(html: "<h1>Title</h1><ul><li><b>Bold</b> item</li></ul>", plain: "Title\nBold item")
+        let text = try await harness.paste()
+        #expect(text == "Intro\n# Title\n\n- **Bold** item")
+    }
+
+    @Test func pastingOurOwnCopyInsertsItsMarkdownSource() async throws {
+        let harness = try await AppKitEditorHarness.load(pasteboard: pasteboard)
+        defer { harness.teardown(); pasteboard.releaseGlobally() }
+        try await harness.setDocument("")
+
+        MacClipboard(pasteboard: pasteboard).write(CopyAsRichText.payload(for: "# Notes\n\n* starred_item\n"))
+        let text = try await harness.paste()
+        #expect(text == "# Notes\n\n* starred_item\n")
+    }
+
+    @Test func pasteAndMatchStyleInsertsPlainText() async throws {
+        let harness = try await AppKitEditorHarness.load(pasteboard: pasteboard)
+        defer { harness.teardown(); pasteboard.releaseGlobally() }
+        try await harness.setDocument("")
+
+        write(html: "<h1>Title</h1>", plain: "Title")
+        let text = try await harness.paste(plain: true)
+        #expect(text == "Title")
+    }
+
+    @Test func pasteReplacesEachSelectionAndUndoesInOneStep() async throws {
+        let harness = try await AppKitEditorHarness.load(pasteboard: pasteboard)
+        defer { harness.teardown(); pasteboard.releaseGlobally() }
+        try await harness.setDocument("one two three")
+        try await harness.setSelections([(0, 3), (8, 13)])
+
+        write(html: "<p><i>x</i></p>", plain: "x")
+        let text = try await harness.paste()
+        #expect(text == "*x* two *x*")
+
+        let undone = try await harness.undo()
+        #expect(undone == "one two three")
+    }
+
+    @Test func multiLinePasteSplitsAcrossMatchingCursors() async throws {
+        let harness = try await AppKitEditorHarness.load(pasteboard: pasteboard)
+        defer { harness.teardown(); pasteboard.releaseGlobally() }
+        try await harness.setDocument("a\nb\n")
+        try await harness.setSelections([(1, 1), (3, 3)])
+
+        write(html: nil, plain: "1\n2")
+        let text = try await harness.paste()
+        #expect(text == "a1\nb2\n")
+    }
+
+    private func write(html: String?, plain: String) {
+        pasteboard.clearContents()
+        let item = NSPasteboardItem()
+        if let html { item.setData(Data(html.utf8), forType: .html) }
+        item.setString(plain, forType: .string)
+        pasteboard.writeObjects([item])
     }
 }
 
@@ -258,7 +330,7 @@ private final class AppKitEditorHarness: NSObject, WKScriptMessageHandler {
     private var window: NSWindow!
     private var ready = false
 
-    static func load() async throws -> AppKitEditorHarness {
+    static func load(pasteboard: NSPasteboard? = nil) async throws -> AppKitEditorHarness {
         EditorTextCheckerDefaults.enable()
         let configuration = WKWebViewConfiguration()
         configuration.writingToolsBehavior = .complete
@@ -274,6 +346,7 @@ private final class AppKitEditorHarness: NSObject, WKScriptMessageHandler {
             backing: .buffered,
             defer: false
         )
+        if let pasteboard { harness.webView.pasteboard = pasteboard }
         harness.window.contentView = harness.webView
         harness.window.makeKeyAndOrderFront(nil)
 
@@ -339,6 +412,53 @@ private final class AppKitEditorHarness: NSObject, WKScriptMessageHandler {
             contentWorld: .page
         )
         return value as? Int ?? 0
+    }
+
+    func documentText() async throws -> String {
+        let value = try await webView.callAsyncJavaScript(
+            "return window.editorView.state.doc.toString()",
+            contentWorld: .page
+        )
+        return value as? String ?? ""
+    }
+
+    func setSelections(_ ranges: [(Int, Int)]) async throws {
+        _ = try await webView.callAsyncJavaScript(
+            """
+            const view = window.editorView;
+            const EditorSelection = view.state.selection.constructor;
+            view.dispatch({
+              selection: EditorSelection.create(ranges.map(([from, to]) => EditorSelection.range(from, to))),
+            });
+            view.focus();
+            return true;
+            """,
+            arguments: ["ranges": ranges.map { [$0.0, $0.1] }],
+            contentWorld: .page
+        )
+    }
+
+    /// Sends ⌘V (or ⌥⇧⌘V) and waits for the document to change.
+    func paste(plain: Bool = false) async throws -> String {
+        let before = try await documentText()
+        if plain { webView.pasteAsPlainText(nil) } else { webView.paste(nil) }
+        return try await waitForChange(from: before)
+    }
+
+    func undo() async throws -> String {
+        let before = try await documentText()
+        _ = try await webView.callAsyncJavaScript("return editorUndo()", contentWorld: .page)
+        return try await waitForChange(from: before)
+    }
+
+    private func waitForChange(from before: String) async throws -> String {
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            let text = try await documentText()
+            if text != before { return text }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return try await documentText()
     }
 
     func performControlKey(characters: String, keyCode: UInt16, shift: Bool = false) {
