@@ -67,3 +67,30 @@ private final class ChromeProbe: NSView {
     }
 }
 #endif
+
+#if os(macOS)
+/// The bare title bar around the Tab strip. SwiftUI swallows the mouse there,
+/// so this view gives back the standard behaviour: drag moves the window and a
+/// double-click does what System Settings ▸ Desktop & Dock says (zoom by default).
+struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class DragView: NSView {
+        override var mouseDownCanMoveWindow: Bool { true }
+
+        override func mouseDown(with event: NSEvent) {
+            guard let window else { return }
+            if event.clickCount == 2 {
+                switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+                case "Minimize": window.performMiniaturize(nil)
+                case "None": break
+                default: window.performZoom(nil)
+                }
+                return
+            }
+            window.performDrag(with: event)
+        }
+    }
+}
+#endif

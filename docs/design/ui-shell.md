@@ -8,7 +8,7 @@ Inspiration: Rex by Superlogical, for its tab strip, floating panes and themes. 
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ● ● ●  ╭───────────────────────────────────────────────────────────╮  [⊟] [+]│  title bar, 52 pt
+│ ● ● ●  ╭───────────────────────────────────────────────────────────╮ [+]  [⊟]│  title bar, 52 pt
 │        │ ▣ status-update.md  ✕ │ ▣ reply-to-priya.md • │ ▣ Untitled│          │  Tab strip
 │        ╰───────────────────────────────────────────────────────────╯          │
 │ ╭─ Editor Card ───────────────────────╮ ╭─ Preview Card ───────────────────╮ │
@@ -24,10 +24,10 @@ Inspiration: Rex by Superlogical, for its tab strip, floating panes and themes. 
 
 | Part | Size and spacing (pt) |
 | --- | --- |
-| Title bar | 52 tall; traffic lights at the system position; the strip starts after them (about 78 pt from the left edge) |
-| Tab strip | One rounded container, radius 12, inset 3, background `strip`; fills the space between the traffic lights and the right-hand buttons |
+| Title bar | 52 tall (never less, even below 100% Zoom). An empty unified `NSToolbar` makes AppKit's title bar 52 pt too, so the traffic lights sit vertically centred on the strip. The strip starts 84 pt from the left edge. The bare bar drags the window, and a double-click follows the system setting (zoom by default) |
+| Tab strip | One rounded container, 38 tall (a Tab plus inset 3 above and below), radius 12, background `strip`, centred in the title bar. It **hugs its Tabs**: as wide as the Tabs at their maximum width, with **New Tab (+)** right after it; once they don't fit it fills the bar, they shrink evenly, then scroll |
 | Tab | 32 tall, radius 9, max 210 wide and min 120; shrinks evenly when crowded, and scrolls horizontally after the minimum; 12.5 pt text; icon 14 |
-| Right-hand title bar buttons | 30 × 30, radius 8: **Show Preview** (only while the Preview is hidden) and **New Tab (+)** |
+| Title bar buttons | 30 × 30, radius 8: **New Tab (+)** after the strip, and **Show Preview** at the right edge (only while the Preview is hidden) |
 | Card area | Padding 12 (top 2); gap 10 between Cards; this gap is the drag handle for the split |
 | Card | Radius 12; background `card`; 1 pt `border` ring; `shadow` |
 | Card header | 40 tall; 14 leading, 8 trailing; icon 16 tinted `accent`; title 13 pt semibold; icon buttons 28 × 28, radius 7, `muted` |

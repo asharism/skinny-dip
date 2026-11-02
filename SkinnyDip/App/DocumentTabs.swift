@@ -43,6 +43,16 @@ enum DocumentTabs {
         if window.titlebarSeparatorStyle != .none { window.titlebarSeparatorStyle = .none }
         if !window.styleMask.contains(.fullSizeContentView) { window.styleMask.insert(.fullSizeContentView) }
         if !window.isOpaque { window.isOpaque = true }
+        // An empty unified toolbar makes AppKit's title bar 52 pt, the height of
+        // ours, so the traffic lights sit centred on the Tab strip and stay there
+        // through resizing and full screen.
+        if window.toolbar == nil {
+            let toolbar = NSToolbar(identifier: "SkinnyDipShell")
+            toolbar.displayMode = .iconOnly
+            toolbar.allowsUserCustomization = false
+            window.toolbar = toolbar
+        }
+        if window.toolbarStyle != .unified { window.toolbarStyle = .unified }
         hideNativeTabBar(window)
         // Remember a window only after it has actually appeared. A later update
         // must not order it front again, or a closed tab comes back.

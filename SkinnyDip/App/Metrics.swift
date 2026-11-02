@@ -6,8 +6,12 @@ struct Metrics: Equatable {
 
     private func scaled(_ base: Double) -> CGFloat { CGFloat(base * zoom) }
 
-    var titleBar: CGFloat { scaled(52) }
-    var trafficLightInset: CGFloat { 78 }
+    /// Never below 52: the unified toolbar keeps the traffic lights centred in
+    /// a 52 pt title bar, and a shorter bar would slide the Cards under them.
+    var titleBar: CGFloat { max(52, scaled(52)) }
+    /// The strip hugs its Tabs: one Tab plus the inset above and below.
+    var stripHeight: CGFloat { tabHeight + stripInset * 2 }
+    var trafficLightInset: CGFloat { 84 }
     var tabHeight: CGFloat { scaled(32) }
     var tabMaxWidth: CGFloat { scaled(210) }
     var tabMinWidth: CGFloat { scaled(120) }

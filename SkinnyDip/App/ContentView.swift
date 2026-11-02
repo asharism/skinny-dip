@@ -169,7 +169,23 @@ struct ContentView: View {
     private var titleBar: some View {
         HStack(spacing: metrics.chipPaddingH) {
             Color.clear.frame(width: metrics.trafficLightInset, height: metrics.titleButton)
-            TabStrip(model: tabs, theme: theme)
+            // The strip is only as wide as its Tabs, with + right after the last
+            // one. Filling the bar left an empty shaded band with no purpose.
+            GeometryReader { geometry in
+                HStack(spacing: metrics.chipPaddingV * 2) {
+                    TabStrip(
+                        model: tabs,
+                        theme: theme,
+                        available: max(0, geometry.size.width - metrics.titleButton - metrics.chipPaddingV * 2)
+                    )
+                    TitleBarButton(systemName: "plus", title: nil, foreground: Color(theme.muted), background: Color.clear) {
+                        DocumentTabs.newDocument(in: window ?? DocumentTabs.frontDocumentWindow())
+                    }
+                    .help("New Tab (⌘T)")
+                    Spacer(minLength: 0)
+                }
+                .frame(height: geometry.size.height)
+            }
             if !showPreview {
                 TitleBarButton(
                     systemName: "sidebar.right",
@@ -177,14 +193,13 @@ struct ContentView: View {
                     foreground: Color(theme.foreground),
                     background: Color(theme.strip)
                 ) { showPreview = true }
+                .help("Show Preview (⇧⌘P)")
             }
-            TitleBarButton(systemName: "plus", title: nil, foreground: Color(theme.muted), background: Color.clear) {
-                DocumentTabs.newDocument(in: window ?? DocumentTabs.frontDocumentWindow())
-            }
-            .help("New Tab")
         }
-        .padding(.trailing, metrics.chipPaddingH)
+        .padding(.trailing, metrics.cardPadding)
         .frame(height: metrics.titleBar)
+        // The bare title bar drags the window and zooms on double-click.
+        .background(WindowDragArea())
     }
 
     private var editorCard: some View {

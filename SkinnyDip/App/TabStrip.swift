@@ -6,61 +6,56 @@ struct TabStrip: View {
     @Environment(\.metrics) private var metrics
     @ObservedObject var model: WindowTabModel
     var theme: ResolvedTheme
+    /// Width the strip may grow to; it hugs its Tabs below that.
+    var available: CGFloat
     /// The Tab under the pointer while dragging, and how far it has moved.
     @State private var dragging: ObjectIdentifier?
     @State private var dragOffset: CGSize = .zero
 
     var body: some View {
-        GeometryReader { geometry in
-            let count = max(model.items.count, 1)
-            let available = max(0, geometry.size.width - metrics.stripInset * 2)
-            let crowded = metrics.tabMinWidth * CGFloat(count) > available
-            let width = crowded ? metrics.tabMinWidth : min(metrics.tabMaxWidth, max(metrics.tabMinWidth, available / CGFloat(count)))
-            ScrollViewReader { scroller in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 0) {
-                        ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                            let isDragging = dragging == item.id
-                            TabCapsule(item: item, theme: theme, width: width, lifted: isDragging) {
-                                model.select(item.id)
-                            } close: {
-                                model.close(item.id)
-                            }
-                            .offset(isDragging ? CGSize(width: dragOffset.width, height: dragOffset.height * 0.35) : .zero)
-                            .zIndex(isDragging ? 1 : 0)
-                            .simultaneousGesture(drag(item: item, index: index, width: width))
-                            .contextMenu {
-                                Button("New Tab") { model.newTab() }
-                                Button("Duplicate") { model.duplicate(item.id) }
-                                Divider()
-                                Button("Move Tab to New Window") { model.moveToNewWindow(item.id) }
-                                    .disabled(model.items.count < 2)
-                                Divider()
-                                Button("Close Tab") { model.close(item.id) }
-                                Button("Close Other Tabs") { model.closeOthers(keeping: item.id) }
-                                    .disabled(model.items.count < 2)
-                                Button("Close Tabs to the Right") { model.closeToTheRight(of: item.id) }
-                                    .disabled(index >= model.items.count - 1)
-                            }
-                            .id(item.id)
+        let count = max(model.items.count, 1)
+        let room = max(0, available - metrics.stripInset * 2)
+        let roomy = metrics.tabMaxWidth * CGFloat(count) <= room
+        // Full width while they fit, then shrink evenly to the minimum, then scroll.
+        let width = roomy ? metrics.tabMaxWidth : max(metrics.tabMinWidth, room / CGFloat(count))
+        let stripWidth = min(available, width * CGFloat(count) + metrics.stripInset * 2)
+        ScrollViewReader { scroller in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
+                        let isDragging = dragging == item.id
+                        TabCapsule(item: item, theme: theme, width: width, lifted: isDragging) {
+                            model.select(item.id)
+                        } close: {
+                            model.close(item.id)
                         }
-                        // The free strip space: double-click opens a Tab, as in Safari.
-                        Color.clear
-                            .frame(minWidth: metrics.tabHeight, maxWidth: .infinity, maxHeight: .infinity)
-                            .contentShape(Rectangle())
-                            .onTapGesture(count: 2) { model.newTab() }
-                            .accessibilityHidden(true)
+                        .offset(isDragging ? CGSize(width: dragOffset.width, height: dragOffset.height * 0.35) : .zero)
+                        .zIndex(isDragging ? 1 : 0)
+                        .simultaneousGesture(drag(item: item, index: index, width: width))
+                        .contextMenu {
+                            Button("New Tab") { model.newTab() }
+                            Button("Duplicate") { model.duplicate(item.id) }
+                            Divider()
+                            Button("Move Tab to New Window") { model.moveToNewWindow(item.id) }
+                                .disabled(model.items.count < 2)
+                            Divider()
+                            Button("Close Tab") { model.close(item.id) }
+                            Button("Close Other Tabs") { model.closeOthers(keeping: item.id) }
+                                .disabled(model.items.count < 2)
+                            Button("Close Tabs to the Right") { model.closeToTheRight(of: item.id) }
+                                .disabled(index >= model.items.count - 1)
+                        }
+                        .id(item.id)
                     }
-                    .padding(metrics.stripInset)
-                    .frame(minWidth: geometry.size.width, alignment: .leading)
                 }
-                .onChange(of: model.items.first(where: \.isSelected)?.id) { _, selected in
-                    guard let selected else { return }
-                    withAnimation(.easeOut(duration: 0.15)) { scroller.scrollTo(selected) }
-                }
+                .padding(metrics.stripInset)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onChange(of: model.items.first(where: \.isSelected)?.id) { _, selected in
+                guard let selected else { return }
+                withAnimation(.easeOut(duration: 0.15)) { scroller.scrollTo(selected) }
+            }
         }
+        .frame(width: stripWidth, height: metrics.stripHeight)
         .background(Color(theme.strip), in: RoundedRectangle(cornerRadius: metrics.stripRadius, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Document tabs")
