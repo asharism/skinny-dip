@@ -58,6 +58,19 @@ struct DocumentCommands: Commands {
                 }
             }
         }
+        CommandGroup(replacing: .printItem) {
+            Button("Page Setup…") {
+                if let window = NSApp.keyWindow {
+                    NSPageLayout().beginSheet(using: NSPrintInfo.shared, on: window)
+                } else {
+                    NSApp.runPageLayout(nil)
+                }
+            }
+            Button("Print…") {
+                NotificationCenter.default.post(name: .printDocument, object: nil)
+            }
+            .keyboardShortcut("p", modifiers: .command)
+        }
     }
 }
 

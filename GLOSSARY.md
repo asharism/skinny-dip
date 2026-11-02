@@ -47,7 +47,7 @@ _Avoid_: trash, history
 **Duplicate**:
 Opening an unsaved copy of the current document as a new Scratch Document in the next Tab.
 
-## Copying out
+## Copying and printing out
 
 **Bare HTML**:
 Semantic HTML carrying structure only (headings, paragraphs, lists, emphasis, links, quotes, tables, code), with no fonts, colors or styling of any kind.
@@ -67,6 +67,10 @@ _Avoid_: plain copy, Copy
 
 **Heading Demotion**:
 Shifting every heading down one level on copy so a document's top heading doesn't dominate an email; the lowest level stays where it is.
+
+**Print**:
+Printing the Preview's rendering of the whole document in a paper style that ignores the Theme and Zoom; Save as PDF comes with it through the system print dialog.
+_Avoid_: export, Print Preview
 
 **Selection Copy**:
 A copy of only the selected part of a document, rendered as if the selection were a document of its own.

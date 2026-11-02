@@ -156,3 +156,68 @@ img {
 
 .hljs-title,
 .hljs-section { color: var(--link); }
+
+/* Print (⌘P): paper ignores the Theme and Zoom. The Theme arrives as inline
+   custom properties on <html>, so these need !important to win. */
+@media print {
+  :root {
+    --zoom: 1 !important;
+    --fg: #000 !important;
+    --muted: #555 !important;
+    --accent: #000 !important;
+    --heading: #000 !important;
+    --marker: #555 !important;
+    --emphasis: #000 !important;
+    --link: #1a4f8b !important;
+    --code: #000 !important;
+    --quote: #444 !important;
+    --border: #bbb !important;
+    --border2: #888 !important;
+    --code-bg: #f2f2f2 !important;
+  }
+
+  html, body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+
+  html { font-size: 11pt; }
+
+  body { padding: 0; }
+
+  main { max-width: none; }
+
+  .placeholder { display: none; }
+
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  pre, blockquote, li, tr, img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* WebKit drops backgrounds on paper, so code blocks keep a hairline box. */
+  pre {
+    overflow: visible;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid #ccc;
+  }
+
+  thead { display: table-header-group; }
+
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-built_in { color: #7a3414; }
+  .hljs-string { color: #3f5a14; }
+  .hljs-comment,
+  .hljs-quote { color: #666; }
+  .hljs-number,
+  .hljs-literal { color: #1f4a73; }
+  .hljs-title,
+  .hljs-section { color: #1a4f8b; }
+}
