@@ -156,7 +156,8 @@ struct ContentView: View {
             ScratchSession.shared.duplicate(window: window)
         }
         .onReceive(NotificationCenter.default.publisher(for: .printDocument)) { _ in
-            guard let window, window.isKeyWindow else { return }
+            // Every Tab's view hears this; only the front document window prints.
+            guard let window, window === (NSApp.keyWindow ?? NSApp.mainWindow) else { return }
             PreviewPrinter.print(
                 markdown: document.source,
                 options: renderOptions,

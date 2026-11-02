@@ -60,7 +60,7 @@ struct DocumentCommands: Commands {
         }
         CommandGroup(replacing: .printItem) {
             Button("Page Setup…") {
-                if let window = NSApp.keyWindow {
+                if let window = NSApp.keyWindow ?? NSApp.mainWindow {
                     NSPageLayout().beginSheet(using: NSPrintInfo.shared, on: window)
                 } else {
                     NSApp.runPageLayout(nil)
