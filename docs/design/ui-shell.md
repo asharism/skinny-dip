@@ -67,12 +67,25 @@ The same title goes into `NSWindow.title`, so the Window menu and Mission Contro
 | Close Tab | ⌘W, or the ✕. **Never prompts** (§8): saved files are autosaved first; a non-empty untitled Tab goes to Recently Closed |
 | Reopen Closed Tab | ⇧⌘T (the latest); File ▸ Recently Closed lists the rest |
 | Duplicate | ⇧⌘S (File ▸ Duplicate), the Editor header button, or the Tab's right-click menu |
-| Tab right-click menu | Duplicate, Close Tab, Close Other Tabs |
+| Tab right-click menu | New Tab, Duplicate, Move Tab to New Window, Close Tab, Close Other Tabs, Close Tabs to the Right |
 | Select tab 1–9 | ⌘1 … ⌘9 (⌘9 = last tab) |
 | Next / previous tab | ⌃Tab / ⌃⇧Tab (the native "Show Next/Previous Tab") |
 | Reorder | Drag a Tab within the strip |
-| Move to a new window | Drag a Tab out of the strip, or Window ▸ Move Tab to New Window |
-| Open from Finder or Open Recent | Opens as a new Tab in the front window |
+| Move to another Window | Drag a Tab onto another Window's strip; it lands in the gap under the pointer |
+| Move to a new Window | Drag a Tab out of every strip and let go, or Window ▸ Move Tab to New Window, or the right-click menu |
+| Merge Windows | Window ▸ Merge All Windows |
+| Open a file | Finder, File ▸ Open, Open Recent, the Dock icon, `open`: a new Tab in the front Window |
+| Drop a file on a strip | Opens it as a Tab of that Window, in the gap under the pointer |
+
+**Opening files.** Every way of opening a file opens it as a Tab in the front Window; a new Window opens only when there is none. Several files at once become several Tabs, the last one selected. A file that is already open selects its Tab (in whichever Window it is) instead of opening twice. If the selected Tab is an empty Scratch Document, the opened file takes its place, so launching Skinny by opening a file never leaves a useless "Untitled" beside it. A Scratch Document with any text in it is never replaced. Windows that macOS restores at launch keep their own Windows.
+
+**Moving Tabs between Windows.** A Tab dragged out of its strip lifts and follows the pointer; outside its own Window a ghost of the Tab follows instead. Over another Window's strip, an accent bar shows the gap it will land in. Where it is let go decides what happens:
+
+- Back on its own strip (or within a short distance of it): it reorders.
+- On another Window's strip: it moves into that Window, in that gap, and is selected. If it was its Window's only Tab, that Window goes away.
+- Anywhere else: it becomes a new Window, placed with its Tab under the pointer. A Window's only Tab let go there stays where it is.
+
+The whole title bar moves the Window except the Tabs themselves, which drag as Tabs.
 
 ## 3. Cards
 
