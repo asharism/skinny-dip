@@ -155,6 +155,16 @@ struct ContentView: View {
             guard let window else { return }
             ScratchSession.shared.duplicate(window: window)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .printDocument)) { _ in
+            // Every Tab's view hears this; only the front document window prints.
+            guard let window, window === (NSApp.keyWindow ?? NSApp.mainWindow) else { return }
+            PreviewPrinter.print(
+                markdown: document.source,
+                options: renderOptions,
+                title: displayTitle,
+                window: window
+            )
+        }
         .onReceive(NotificationCenter.default.publisher(for: .selectTab)) { note in
             guard window?.isKeyWindow == true, let number = note.object as? Int else { return }
             tabs.selectIndex(number)
@@ -428,13 +438,14 @@ struct ContentView: View {
     }
 
     private func refreshPreview() {
-        previewState.update(
-            source: document.source,
-            options: RenderOptions(
-                demotesHeadings: demotesHeadings,
-                bordersTables: bordersTables,
-                newlinesAsBreaks: newlinesAsBreaks
-            )
+        previewState.update(source: document.source, options: renderOptions)
+    }
+
+    private var renderOptions: RenderOptions {
+        RenderOptions(
+            demotesHeadings: demotesHeadings,
+            bordersTables: bordersTables,
+            newlinesAsBreaks: newlinesAsBreaks
         )
     }
 

@@ -118,6 +118,15 @@ final class ScratchSession: ObservableObject {
         NotificationCenter.default.post(name: .tabsDidChange, object: nil)
     }
 
+    /// `DocumentGroup`'s new-document closure. AppKit opens existing files on
+    /// its "NSDocumentController Opening" queue and SwiftUI still asks for a new
+    /// document there; that placeholder is replaced by the file's contents, so
+    /// off main it must not touch the Scratch queue (or assume the main actor).
+    nonisolated static func makeDocumentForGroup() -> MarkdownDocument {
+        guard Thread.isMainThread else { return MarkdownDocument() }
+        return MainActor.assumeIsolated { shared.makeNewDocument() }
+    }
+
     func makeNewDocument() -> MarkdownDocument {
         if !queue.isEmpty {
             let next = queue.removeFirst()

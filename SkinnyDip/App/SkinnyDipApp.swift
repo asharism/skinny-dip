@@ -99,7 +99,7 @@ struct SkinnyDipApp: App {
 
     var body: some Scene {
         #if os(macOS)
-        DocumentGroup(newDocument: MainActor.assumeIsolated { ScratchSession.shared.makeNewDocument() }) { file in
+        DocumentGroup(newDocument: ScratchSession.makeDocumentForGroup()) { file in
             ContentView(document: file.$document, fileURL: file.fileURL)
                 .environmentObject(themes)
                 .environment(\.metrics, Metrics(zoom: uiZoom))

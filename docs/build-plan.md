@@ -145,6 +145,7 @@ MVP = the smallest app that replaces the Sublime + VS Code preview round-trip on
 - Undo depth of at least 10,000 steps per document
 - Duplicate (⇧⌘S, Editor header, Tab menu): an unsaved copy as a new Tab
 - Zoom the whole UI with ⌘+ / ⌘− / ⌘0, VS Code style
+- Print (⌘P) and Page Setup: the Preview in a paper style (black on white, no Theme, no Zoom) through the system print dialog, whose Save as PDF replaces a separate PDF export
 
 **Out (for now)**
 
@@ -153,7 +154,7 @@ MVP = the smallest app that replaces the Sublime + VS Code preview round-trip on
 - Local images, image paste, embedding images in the clipboard
 - Copying a preview selection
 - Math/LaTeX, Mermaid, footnotes beyond GFM
-- Export to PDF/DOCX (the paste covers it; revisit later)
+- Export to DOCX, or a PDF export of its own (Print's Save as PDF covers PDF; the paste covers the rest)
 - iCloud sync, folder/sidebar browser, more than two Cards per Tab
 - App Store release (run locally with a personal team first)
 
