@@ -1,5 +1,7 @@
 #if os(macOS)
+import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 import MarkdownCore
 
 struct TabStrip: View {
@@ -57,6 +59,29 @@ struct TabStrip: View {
         }
         .frame(width: stripWidth, height: metrics.stripHeight)
         .background(Color(theme.strip), in: RoundedRectangle(cornerRadius: metrics.stripRadius, style: .continuous))
+        .overlay(alignment: .leading) {
+            // The gap a Tab or file from elsewhere will land in.
+            if let slot = model.dropSlot {
+                Capsule()
+                    .fill(Color(theme.accent))
+                    .frame(width: 2 * metrics.zoom, height: metrics.tabHeight * 0.7)
+                    .offset(x: metrics.stripInset + CGFloat(slot) * width - metrics.zoom)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+            model.noteStrip(frame: frame, tabWidth: width, inset: metrics.stripInset)
+        }
+        .onChange(of: width) { _, width in
+            model.noteStrip(frame: nil, tabWidth: width, inset: metrics.stripInset)
+        }
+        .onDrop(of: [.fileURL], delegate: FileDrop(model: model))
+        // AppKit moves the window on any drag in the title bar, Tabs included, so
+        // a Tab could never be dragged. Over the strip the window holds still;
+        // everywhere else (the bare title bar, Window ▸ Fill, Center) it moves.
+        .onHover { inside in
+            if dragging == nil { model.window?.isMovable = !inside }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Document tabs")
     }
@@ -66,22 +91,123 @@ struct TabStrip: View {
             .onChanged { value in
                 dragging = item.id
                 dragOffset = value.translation
+                let point = NSEvent.mouseLocation
+                model.dragMoved(to: point, detachDistance: metrics.detachDistance)
+                // Outside its own window the lifted Tab can't be drawn, so a ghost follows the pointer.
+                if let frame = model.window?.frame, !frame.contains(point) {
+                    TabGhost.show(title: item.title, theme: theme, metrics: metrics, at: point)
+                } else {
+                    TabGhost.hide()
+                }
             }
             .onEnded { value in
                 defer {
                     dragging = nil
                     dragOffset = .zero
+                    model.dragEnded()
+                    TabGhost.hide()
+                    // The pointer may have left the strip mid-drag without a hover update.
+                    for window in NSApp.windows where !window.isMovable && window.tabbingIdentifier == "SkinnyDipDocument" {
+                        window.isMovable = true
+                    }
                 }
-                if abs(value.translation.height) > metrics.detachDistance,
-                   abs(value.translation.height) > abs(value.translation.width),
-                   model.items.count > 1 {
-                    model.moveToNewWindow(item.id)
-                    return
+                let point = NSEvent.mouseLocation
+                let (drop, target) = model.drop(at: point, detachDistance: metrics.detachDistance)
+                switch drop {
+                case .reorder:
+                    let shift = Int((value.translation.width / max(width, 1)).rounded())
+                    let destination = min(max(0, index + shift), model.items.count - 1)
+                    model.move(from: index, to: destination)
+                case .join(_, let slot):
+                    if let target { model.join(item.id, to: target, at: slot) }
+                case .newWindow:
+                    model.moveToNewWindow(item.id, grabbedAt: point)
+                case .none:
+                    break
                 }
-                let shift = Int((value.translation.width / max(width, 1)).rounded())
-                let destination = min(max(0, index + shift), model.items.count - 1)
-                model.move(from: index, to: destination)
             }
+    }
+}
+
+/// Markdown or text files dragged in from Finder open as Tabs at the gap under the pointer.
+private struct FileDrop: DropDelegate {
+    let model: WindowTabModel
+
+    func validateDrop(info: DropInfo) -> Bool { info.hasItemsConforming(to: [.fileURL]) }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        let slot = model.slot(atStripX: info.location.x)
+        if model.dropSlot != slot { model.dropSlot = slot }
+        return DropProposal(operation: .copy)
+    }
+
+    func dropExited(info: DropInfo) { model.dropSlot = nil }
+
+    func performDrop(info: DropInfo) -> Bool {
+        let slot = model.slot(atStripX: info.location.x)
+        model.dropSlot = nil
+        let providers = info.itemProviders(for: [.fileURL])
+        Task { @MainActor in
+            var urls: [URL] = []
+            for provider in providers {
+                if let url = await Self.url(from: provider), Self.isText(url) { urls.append(url) }
+            }
+            model.openFiles(urls, at: slot)
+        }
+        return true
+    }
+
+    private static func url(from provider: NSItemProvider) async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
+        }
+    }
+
+    static func isText(_ url: URL) -> Bool {
+        guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
+        return type.conforms(to: .plainText) || type.conforms(to: UTType("net.daringfireball.markdown") ?? .plainText)
+    }
+}
+
+/// A borderless copy of the dragged Tab that follows the pointer outside its window.
+@MainActor
+private enum TabGhost {
+    private static var panel: NSPanel?
+
+    static func show(title: String, theme: ResolvedTheme, metrics: Metrics, at point: NSPoint) {
+        let size = NSSize(width: metrics.tabMaxWidth, height: metrics.tabHeight)
+        let panel = panel ?? {
+            let made = NSPanel(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+            made.isOpaque = false
+            made.backgroundColor = .clear
+            made.hasShadow = true
+            made.ignoresMouseEvents = true
+            made.level = .floating
+            made.alphaValue = 0.9
+            Self.panel = made
+            return made
+        }()
+        if panel.contentView?.toolTip != title {
+            let label = HStack(spacing: metrics.chipPaddingV) {
+                Image(systemName: "doc.plaintext").font(.system(size: metrics.tabIcon))
+                Text(title).font(.system(size: metrics.tabFont, weight: .semibold)).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, metrics.chipPaddingH)
+            .frame(width: size.width, height: size.height)
+            .foregroundStyle(Color(theme.foreground))
+            .background(Color(theme.tab), in: RoundedRectangle(cornerRadius: metrics.tabRadius, style: .continuous))
+            let host = NSHostingView(rootView: label)
+            host.toolTip = title
+            panel.contentView = host
+            panel.setContentSize(size)
+        }
+        panel.setFrameOrigin(NSPoint(x: point.x - size.width / 2, y: point.y - size.height / 2))
+        panel.orderFront(nil)
+    }
+
+    static func hide() {
+        panel?.orderOut(nil)
     }
 }
 

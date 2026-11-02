@@ -4,8 +4,27 @@ import MarkdownCore
 import AppKit
 
 /// Opens an untitled document on launch when nothing is restored; skipped for Finder-open and state restoration.
+@MainActor
 private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
     private var didFinishLaunch = false
+    /// Launched by opening files (Finder, Dock, `open`): no empty Tab beside them.
+    private var openedFilesAtLaunch = false
+    /// The launch Untitled waits for both: AppKit restores windows after launch
+    /// finishes when there is state to restore, and before it when there is none.
+    private var didLaunch = false
+    private var didRestore = false
+    private var didCheckUntitled = false
+
+    private func openUntitledIfNothingOpened() {
+        guard didLaunch, didRestore, !didCheckUntitled else { return }
+        didCheckUntitled = true
+        let hasDocument = NSApp.windows.contains { $0.windowController?.document is NSDocument }
+        guard !hasDocument, !openedFilesAtLaunch else { return }
+        for case let panel as NSOpenPanel in NSApp.windows {
+            panel.cancel(nil)
+        }
+        DocumentTabs.newDocument(in: nil)
+    }
 
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         guard !didFinishLaunch else { return false }
@@ -18,6 +37,12 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         DocumentTabs.install()
+        NotificationCenter.default.addObserver(forName: NSApplication.didFinishRestoringWindowsNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.didRestore = true
+                self?.openUntitledIfNothingOpened()
+            }
+        }
         UserDefaults.standard.register(defaults: [
             "AppleWindowTabbingMode": "always",
             "uiZoom": 1.0,
@@ -56,12 +81,13 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         ScratchSession.shared.openRestoredDocuments()
-        let hasDocument = NSApp.windows.contains { $0.windowController?.document is NSDocument }
-        if !hasDocument {
-            for case let panel as NSOpenPanel in NSApp.windows {
-                panel.cancel(nil)
-            }
-            DocumentTabs.newDocument(in: nil)
+        didLaunch = true
+        openUntitledIfNothingOpened()
+        // AppKit posts this whether or not it restored anything; a fallback in case it doesn't.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            DocumentTabs.finishRestoring()
+            self?.didRestore = true
+            self?.openUntitledIfNothingOpened()
         }
         EditorSpellCheck.warmUp()
         AppWritingTools.installMainMenuWritingTools()
@@ -77,6 +103,7 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
+        if !didFinishLaunch { openedFilesAtLaunch = true }
         for url in urls {
             _ = url.startAccessingSecurityScopedResource()
         }
