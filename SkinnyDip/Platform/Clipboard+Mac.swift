@@ -27,33 +27,36 @@ extension NSPasteboard.PasteboardType {
     static let skinnyDipMarkdown = Self(ClipboardType.skinnyDipMarkdown)
 }
 
+extension NSPasteboard.PasteboardType {
+    static let webArchive = Self("com.apple.webarchive")
+}
+
 extension NSPasteboard {
+    /// Cheap enough for menu validation: looks at the flavors, converts nothing.
     var canPasteFromPasteboard: Bool {
-        editorPasteText() != nil
+        availableType(from: [.skinnyDipMarkdown, .string, .html, .webArchive, .rtf]) != nil
     }
 
-    /// Text for ⌘V. Copies made in Skinny Dip keep their Markdown flavor.
-    /// Rich text from other apps uses the plain-text flavor, then RTF, then HTML.
-    func editorPasteText() -> String? {
-        if let markdown = string(forType: .skinnyDipMarkdown), !markdown.isEmpty {
-            return markdown
-        }
+    /// The flavors Paste as Markdown chooses between (`PasteAsMarkdown`).
+    var pasteContents: PasteboardContents {
+        let html = data(forType: .html).flatMap(PasteboardHTML.decode)
+            ?? data(forType: .webArchive).flatMap(PasteboardHTML.fromWebArchive)
+        return PasteboardContents(
+            skinnyDipMarkdown: string(forType: .skinnyDipMarkdown),
+            html: html,
+            plainText: plainText
+        )
+    }
+
+    /// The plain-text flavor, or the text of an RTF-only copy (TextEdit).
+    private var plainText: String? {
         if let plain = string(forType: .string), !plain.isEmpty {
             return plain
-        }
-        if let values = readObjects(forClasses: [NSString.self], options: nil) as? [String],
-           let first = values.first, !first.isEmpty {
-            return first
         }
         if let data = data(forType: .rtf),
            let text = NSAttributedString(rtf: data, documentAttributes: nil)?.string,
            !text.isEmpty {
             return text
-        }
-        if let data = data(forType: .html),
-           let text = NSAttributedString(html: data, options: [:], documentAttributes: nil)?.string {
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty { return trimmed }
         }
         return nil
     }

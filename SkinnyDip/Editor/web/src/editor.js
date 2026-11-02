@@ -36,6 +36,7 @@ import {
   undoDepth,
   redoDepth,
   indentWithTab,
+  isolateHistory,
 } from "@codemirror/commands";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import {
@@ -366,13 +367,28 @@ window.editorCut = () => {
   return true;
 };
 
+// Paste lands here (Swift reads the pasteboard; the sandboxed web process can't).
+// Like CodeMirror's own paste: with one line per cursor, each cursor gets its
+// line; otherwise every selection range gets the whole text. One undo step.
 window.insertText = (text) => {
-  const insert = text == null ? "" : String(text);
-  const { from, to } = view.state.selection.main;
-  view.dispatch({
-    changes: { from, to, insert },
-    selection: { anchor: from + insert.length },
+  const state = view.state;
+  const insert = state.toText(text == null ? "" : String(text));
+  const ranges = state.selection.ranges;
+  let line = 1;
+  const spec =
+    ranges.length > 1 && insert.lines === ranges.length
+      ? state.changeByRange((range) => {
+          const piece = insert.line(line++).text;
+          return {
+            changes: { from: range.from, to: range.to, insert: piece },
+            range: EditorSelection.cursor(range.from + piece.length),
+          };
+        })
+      : state.replaceSelection(insert);
+  view.dispatch(spec, {
     userEvent: "input.paste",
+    scrollIntoView: true,
+    annotations: isolateHistory.of("full"),
   });
   view.focus();
   // Returned to Swift. The documentChanged message carries the same text, but a

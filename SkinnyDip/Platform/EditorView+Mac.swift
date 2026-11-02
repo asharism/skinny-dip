@@ -394,17 +394,20 @@ final class EditorWebView: WKWebView {
         return nil
     }
 
-    /// WebKit's own paste reads the pasteboard in the web process, which the
-    /// sandbox blocks, so ⌘V inserts here and the text is pushed in over the bridge.
+    /// Tests point this at a private pasteboard.
+    var pasteboard: NSPasteboard = .general
+
+    /// Paste as Markdown. WebKit's own paste reads the pasteboard in the web
+    /// process, which the sandbox blocks, so ⌘V resolves the text here
+    /// (`PasteAsMarkdown`) and pushes it in over the bridge.
     @objc func paste(_ sender: Any?) {
-        guard let text = NSPasteboard.general.editorPasteText() else { return }
+        guard let text = PasteAsMarkdown.text(for: pasteboard.pasteContents) else { return }
         insertEditorText(text)
     }
 
+    /// Paste and Match Style: the plain-text flavor, never converted.
     @objc func pasteAsPlainText(_ sender: Any?) {
-        let pasteboard = NSPasteboard.general
-        let text = pasteboard.string(forType: .string) ?? pasteboard.editorPasteText()
-        guard let text, !text.isEmpty else { return }
+        guard let text = PasteAsMarkdown.plainText(for: pasteboard.pasteContents) else { return }
         insertEditorText(text)
     }
 
@@ -475,7 +478,7 @@ final class EditorWebView: WKWebView {
             (item as? NSMenuItem)?.isEnabled = enabled
             return enabled
         case #selector(paste(_:)):
-            let enabled = NSPasteboard.general.canPasteFromPasteboard
+            let enabled = pasteboard.canPasteFromPasteboard
             (item as? NSMenuItem)?.isEnabled = enabled
             return enabled
         default:
@@ -503,7 +506,7 @@ final class EditorWebView: WKWebView {
             case #selector(copy(_:)), #selector(NSText.copy(_:)):
                 item.isEnabled = editorCanCopy
             case #selector(paste(_:)):
-                item.isEnabled = NSPasteboard.general.canPasteFromPasteboard
+                item.isEnabled = pasteboard.canPasteFromPasteboard
             default:
                 break
             }

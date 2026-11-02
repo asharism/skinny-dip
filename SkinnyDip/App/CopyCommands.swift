@@ -48,7 +48,7 @@ struct CopyCommands: Commands {
             }
             .keyboardShortcut("c", modifiers: [.command, .option])
             .disabled(source == nil)
-            Button("Paste", action: paste)
+            Button("Paste as Markdown", action: paste)
                 .keyboardShortcut("v")
             Button("Paste and Match Style", action: pasteAsPlainText)
                 .keyboardShortcut("v", modifiers: [.command, .option, .shift])

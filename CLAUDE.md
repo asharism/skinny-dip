@@ -27,7 +27,7 @@ xcodebuild build -scheme SkinnyDip -destination 'platform=macOS,arch=arm64' -der
 xcodebuild test -scheme SkinnyDip -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/xcode
 ```
 
-Golden tests: add a pair `Packages/MarkdownCore/Tests/MarkdownCoreTests/Golden/<name>.md` + `<name>.html`; `GoldenTests` picks it up automatically. Trailing newlines in the `.html` are ignored.
+Golden tests: add a pair `Packages/MarkdownCore/Tests/MarkdownCoreTests/Golden/<name>.md` + `<name>.html`; `GoldenTests` picks it up automatically. Trailing newlines in the `.html` are ignored. Paste as Markdown goldens run the other way: `Golden/paste/<name>.html` → `<name>.md` (`PasteGoldenTests`); `capture-*` files are real clipboard HTML from Word, Safari and Chrome, so add Outlook/Teams/Gmail captures the same way.
 
 ## Architecture
 
