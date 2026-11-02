@@ -66,6 +66,7 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
         EditorSpellCheck.warmUp()
         AppWritingTools.installMainMenuWritingTools()
         didFinishLaunch = true
+        _ = AppUpdater.shared
         #if DEBUG
         DebugSnapshot.installIfRequested()
         #endif
@@ -113,6 +114,7 @@ struct SkinnyDipApp: App {
             TabCommands()
             DocumentCommands()
             ViewCommands()
+            UpdateCommands()
         }
         #else
         DocumentGroup(newDocument: MarkdownDocument()) { file in

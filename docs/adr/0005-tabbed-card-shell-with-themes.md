@@ -1,6 +1,6 @@
 # Tabbed card shell with themes, styled after Rex
 
-Skinny Dip's window takes its look from Rex (Superlogical): a capsule **Tab** strip in the title bar, the Editor and Preview as floating rounded **Cards** on a tinted window, and a **Theme** that tints everything. One Tab is one Markdown document. The design is in `docs/design/ui-shell.md` and the mockup in `docs/design/ui-shell-mockup.html`.
+Skinny's window takes its look from Rex (Superlogical): a capsule **Tab** strip in the title bar, the Editor and Preview as floating rounded **Cards** on a tinted window, and a **Theme** that tints everything. One Tab is one Markdown document. The design is in `docs/design/ui-shell.md` and the mockup in `docs/design/ui-shell-mockup.html`.
 
 This moves custom themes and tabs off the MVP "Out" list, each with a paste-workflow reason. With Tabs, several drafts (a reply, a status update, meeting notes) stay open in one window instead of a pile of windows. Themes make the app pleasant enough to leave open, which is the success metric ("you stop opening VS Code").
 

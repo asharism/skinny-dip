@@ -1,15 +1,15 @@
-# Skinny Dip
+# Skinny
 
 A Markdown scratchpad whose job is to turn Markdown into rich text that pastes cleanly into other apps.
 
 ## Writing
 
 **Markdown Source**:
-A document's text exactly as the user typed it; the source of truth that Skinny Dip never rewrites on its own.
+A document's text exactly as the user typed it; the source of truth that Skinny never rewrites on its own.
 _Avoid_: raw text, plain text, model
 
 **Preview**:
-The live rendering of the Markdown Source in its own Card, showing the structure Copy as Rich Text will paste, in Skinny Dip's own theme rather than the destination's.
+The live rendering of the Markdown Source in its own Card, showing the structure Copy as Rich Text will paste, in Skinny's own theme rather than the destination's.
 _Avoid_: viewer, render pane
 
 ## Window
@@ -37,7 +37,7 @@ _Avoid_: linked scrolling
 ## Documents
 
 **Scratch Document**:
-A document the user has never saved to a location of their choosing; Skinny Dip stores it itself, with its undo history, and reopens it on launch.
+A document the user has never saved to a location of their choosing; Skinny stores it itself, with its undo history, and reopens it on launch.
 _Avoid_: untitled file, temp file, draft
 
 **Recently Closed**:
@@ -75,7 +75,7 @@ _Avoid_: partial copy
 ## Destinations
 
 **Paste Target**:
-A destination app that Skinny Dip output is pasted into and checked against by hand each release (Outlook, Word, Gmail, Teams and so on).
+A destination app that Skinny output is pasted into and checked against by hand each release (Outlook, Word, Gmail, Teams and so on).
 _Avoid_: client, destination app, target
 
 **Tier 1 Paste Target**:

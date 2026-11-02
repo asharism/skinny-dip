@@ -1,5 +1,7 @@
 # Skinny Dip — Build Plan
 
+> **Historical.** This is the original plan the app was started from (Oct 30, 2026), kept as written. The app has since been renamed **Skinny**. For current behavior read `CLAUDE.md`, `GLOSSARY.md` and `docs/adr/`; where they differ from this plan, they win.
+
 Oct 30, 2026 · @Hitesh
 
 ## TL;DR

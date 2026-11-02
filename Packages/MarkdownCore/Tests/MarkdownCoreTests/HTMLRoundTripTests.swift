@@ -19,7 +19,7 @@ struct HTMLRoundTripTests {
         let files = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
         return files.filter { $0.hasSuffix(".md") }.sorted()
             .map { String($0.dropLast(3)) }
-            // Paste as Markdown drops images (Build Plan, Commands).
+            // Paste as Markdown drops images (docs/build-plan.md, Commands).
             .filter { $0 != "images" }
             .map { Case(name: $0) }
     }

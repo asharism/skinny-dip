@@ -3,7 +3,7 @@ import Foundation
 /// The pasteboard flavors Paste as Markdown reads, already pulled off the
 /// platform pasteboard, so the choice between them is testable without AppKit.
 public struct PasteboardContents: Sendable, Equatable {
-    /// Our private flavor: the Markdown Source of a Skinny Dip copy.
+    /// Our private flavor: the Markdown Source of a Skinny copy.
     public var skinnyDipMarkdown: String?
     /// `public.html`, or the main resource of a web archive (Safari, Mail).
     public var html: String?
