@@ -14,9 +14,13 @@ _Avoid_: viewer, render pane
 
 ## Window
 
+**Window**:
+A group of Tabs sharing one Tab strip; every Tab belongs to exactly one Window and can be moved to another Window or out into a Window of its own.
+_Avoid_: tear-off, detach, workspace
+
 **Tab**:
-One open Markdown document in the window's Tab strip; each Tab has its own Editor and Preview Cards.
-_Avoid_: window, pane, workspace
+One open Markdown document in a Window's Tab strip; each Tab has its own Editor and Preview Cards.
+_Avoid_: pane, workspace
 
 **Card**:
 One of the two floating rounded panels in a Tab, the Editor Card or the Preview Card, each with a header and a footer.

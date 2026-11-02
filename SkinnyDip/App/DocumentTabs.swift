@@ -1,14 +1,19 @@
 #if os(macOS)
 import AppKit
 
-/// Puts a new document into the front window's tab group. DocumentGroup
-/// otherwise opens a separate window even when the system tabbing mode is "always".
+/// Puts every new document window, new or opened from a file, into the front
+/// window's tab group. DocumentGroup otherwise opens a separate window even when
+/// the system tabbing mode is "always".
 @MainActor
 enum DocumentTabs {
     private static var host: NSWindow?
+    /// The next new document window stays a window of its own (launch, restore).
+    private static var wantsNewWindow = false
     /// While a tab is being dragged out, the new window must stay a window.
     private static var suppress = false
     private static var insertAt: Int?
+    /// Windows whose place (a tab of some window, or a window of their own) is decided.
+    private static let placed = NSHashTable<NSWindow>.weakObjects()
     /// Windows we have already brought on screen. Ordering a closed window front
     /// again puts its tab straight back.
     private static let shown = NSHashTable<NSWindow>.weakObjects()
@@ -17,6 +22,15 @@ enum DocumentTabs {
         suppressOpenPanelUntil = Date().addingTimeInterval(2)
         UserDefaults.standard.set("always", forKey: "AppleWindowTabbingMode")
         NSWindow.allowsAutomaticWindowTabbing = true
+        // Windows AppKit restores keep the windows they had; only later ones are tabbed.
+        restoring = true
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didFinishRestoringWindowsNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in finishRestoring() }
+        }
         NotificationCenter.default.addObserver(
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
@@ -34,6 +48,17 @@ enum DocumentTabs {
     }
 
     private static var suppressOpenPanelUntil = Date.distantPast
+    private static var restoring = false
+
+    /// Ends the launch window-restoration phase: every document window that exists
+    /// now has its place.
+    static func finishRestoring() {
+        guard restoring else { return }
+        restoring = false
+        for window in NSApp.windows where window.tabbingIdentifier == "SkinnyDipDocument" || window.windowController?.document is NSDocument {
+            placed.add(window)
+        }
+    }
 
     static func configure(_ window: NSWindow) {
         if window.tabbingMode != .preferred { window.tabbingMode = .preferred }
@@ -112,12 +137,14 @@ enum DocumentTabs {
     /// `host` nil opens a new window. Otherwise the new document becomes a tab of `host`.
     static func newDocument(in host: NSWindow?, at index: Int? = nil) {
         self.host = host
+        wantsNewWindow = host == nil
         insertAt = index
         let before = Set(NSApp.windows.map(ObjectIdentifier.init))
         NSDocumentController.shared.newDocument(nil)
         for window in NSApp.windows where !before.contains(ObjectIdentifier(window)) {
             adoptIfNeeded(window)
         }
+        wantsNewWindow = false
         DispatchQueue.main.async {
             NSApp.windows.filter { $0.tabbingIdentifier == "SkinnyDipDocument" }.forEach(hideNativeTabBar)
         }
@@ -133,16 +160,63 @@ enum DocumentTabs {
         suppress = false
     }
 
-    private static func adoptIfNeeded(_ window: NSWindow) {
+    /// Opens files as Tabs of `host`, starting at `index`, one after another so
+    /// each lands in order. A file that is already open just selects its Tab.
+    static func open(_ urls: [URL], in host: NSWindow, at index: Int?) {
+        guard let url = urls.first else { return }
+        self.host = host
+        insertAt = index
+        NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { document, _, _ in
+            Task { @MainActor in
+                // Its window may not have become key yet; place it now, while `host` is pending.
+                for controller in document?.windowControllers ?? [] {
+                    if let window = controller.window { adoptIfNeeded(window) }
+                }
+                // Nothing new was adopted, so the pending host must not catch a later window.
+                if self.host === host {
+                    self.host = nil
+                    insertAt = nil
+                }
+                open(Array(urls.dropFirst()), in: host, at: index.map { $0 + 1 })
+            }
+        }
+    }
+
+    /// The window a new document joins when nobody named one: the frontmost
+    /// document window outside `window`'s own tab group.
+    private static func frontHost(excluding window: NSWindow) -> NSWindow? {
+        let own = window.tabGroup?.windows ?? [window]
+        return NSApp.orderedWindows.first { candidate in
+            candidate.tabbingIdentifier == "SkinnyDipDocument"
+                && candidate.isVisible
+                && !candidate.isMiniaturized
+                && candidate.windowController?.document is NSDocument
+                && !own.contains { $0 === candidate }
+        }
+    }
+
+    /// Configures a document window and, the first time, decides its place.
+    static func adoptIfNeeded(_ window: NSWindow) {
         guard window.windowController?.document is NSDocument else { return }
         configure(window)
-        guard !suppress, let host, host !== window else { return }
+        guard !placed.contains(window) else { return }
+        placed.add(window)
+        guard !suppress, !wantsNewWindow, !restoring || host != nil else { return }
+        guard let host = host ?? frontHost(excluding: window), host !== window else { return }
         let index = insertAt
         self.host = nil
         insertAt = nil
         let alreadyTabbed = host.tabGroup?.windows.contains(where: { $0 === window }) == true
+        // A file opened over an untouched empty Tab takes its place (ADR-0007: there is
+        // nothing in it to lose).
+        let replaced = (window.windowController?.document as? NSDocument)?.fileURL != nil
+            ? (host.tabGroup?.selectedWindow ?? host)
+            : nil
         if !alreadyTabbed {
             host.addTabbedWindow(window, ordered: .above)
+        }
+        if let replaced, replaced !== window, ScratchSession.shared.isBlank(replaced) {
+            replaced.closeDocumentWindow()
         }
         if let index, let group = window.tabGroup {
             let from = group.windows.firstIndex(where: { $0 === window }) ?? 0

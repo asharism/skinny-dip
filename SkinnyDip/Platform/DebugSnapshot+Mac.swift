@@ -5,6 +5,9 @@ import WebKit
 /// Debug builds only: lets an agent see the window without Screen Recording permission.
 /// Launch with `SKINNYDIP_SNAPSHOT=/path/shot.png`, then create `/path/shot.png.trigger`;
 /// the key window (SwiftUI layer plus each web view) is written to the PNG and the trigger removed.
+/// Creating `/path/shot.png.layout` instead writes the windows and their Tabs, one window
+/// per line in front-to-back order with the window frame and the Tab strip in screen
+/// coordinates, to `/path/shot.png.layout.txt`.
 @MainActor
 enum DebugSnapshot {
     private static var timer: Timer?
@@ -17,6 +20,12 @@ enum DebugSnapshot {
                 guard FileManager.default.fileExists(atPath: trigger) else { return }
                 try? FileManager.default.removeItem(atPath: trigger)
                 await capture(to: URL(fileURLWithPath: path))
+            }
+            Task { @MainActor in
+                let layout = path + ".layout"
+                guard FileManager.default.fileExists(atPath: layout) else { return }
+                try? FileManager.default.removeItem(atPath: layout)
+                try? describeWindows().write(toFile: layout + ".txt", atomically: true, encoding: .utf8)
             }
         }
     }
@@ -57,6 +66,29 @@ enum DebugSnapshot {
               let bitmap = NSBitmapImageRep(data: tiff),
               let png = bitmap.representation(using: .png, properties: [:]) else { return }
         try? png.write(to: url)
+    }
+
+    /// `[a.md, *b.md] key` for a window with two Tabs, `b.md` selected, that is key.
+    static func describeWindows() -> String {
+        var seen = Set<ObjectIdentifier>()
+        var lines: [String] = []
+        for window in NSApp.orderedWindows where window.tabbingIdentifier == "SkinnyDipDocument" && window.isVisible {
+            let tabs = window.tabGroup?.windows ?? [window]
+            let key = ObjectIdentifier(window.tabGroup ?? window)
+            guard seen.insert(key).inserted else { continue }
+            let selected = window.tabGroup?.selectedWindow ?? window
+            let titles = tabs.map { ($0 === selected ? "*" : "") + ($0.title.isEmpty ? "Untitled" : $0.title) }
+            let isKey = tabs.contains { $0.isKeyWindow }
+            var line = "[" + titles.joined(separator: ", ") + "]" + (isKey ? " key" : "")
+            let w = selected.frame
+            line += String(format: " window=%.0f,%.0f,%.0f,%.0f", w.minX, w.minY, w.width, w.height)
+            if let strip = WindowTabModel.screenStrip(of: selected) {
+                let f = strip.frame
+                line += String(format: " strip=%.0f,%.0f,%.0f,%.0f tab=%.0f", f.minX, f.minY, f.width, f.height, strip.tabWidth)
+            }
+            lines.append(line)
+        }
+        return lines.joined(separator: "\n") + "\n"
     }
 
     private static func collect(_ view: NSView, into list: inout [WKWebView]) {

@@ -313,6 +313,12 @@ final class ScratchSession: ObservableObject {
         NotificationCenter.default.post(name: .tabsDidChange, object: nil)
     }
 
+    /// A Scratch Document with no text: closing it loses nothing (ADR-0007).
+    func isBlank(_ window: NSWindow) -> Bool {
+        guard let document = openDocuments[ObjectIdentifier(window)] else { return false }
+        return document.scratchID != nil && document.fileName == nil && document.text.isEmpty
+    }
+
     func isUnflushed(_ window: NSWindow) -> Bool {
         guard let id = scratchByWindow[ObjectIdentifier(window)] else { return false }
         return unflushed.contains(id)
