@@ -1,34 +1,39 @@
 :root {
-  color-scheme: light dark;
-  --text: #1f2328;
-  --muted: #656d76;
-  --link: #0969da;
-  --border: #d0d7de;
-  --code-bg: #f6f8fa;
-  --blockquote-border: #d0d7de;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --link: #4493f8;
-    --border: #30363d;
-    --code-bg: #161b22;
-    --blockquote-border: #30363d;
-  }
+  --zoom: 1;
+  --fg: #2b2b2b;
+  --muted: #67625c;
+  --accent: #a84d26;
+  --selection: #f0ddd2;
+  --heading: #943f1b;
+  --marker: #8f8a84;
+  --emphasis: #3c5a78;
+  --link: #2b6797;
+  --code: #55672a;
+  --quote: #67625c;
+  --border: rgba(0, 0, 0, 0.08);
+  --border2: rgba(0, 0, 0, 0.16);
+  --code-bg: rgba(0, 0, 0, 0.05);
+  --cursor: #a84d26;
 }
 
 html {
-  font: -apple-system-body;
-  line-height: 1.5;
-  color: var(--text);
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: calc(13px * var(--zoom));
+  line-height: 1.65;
+  color: var(--fg);
   background: transparent;
 }
 
 body {
+  box-sizing: border-box;
+  height: 100%;
   margin: 0;
-  padding: 16px 20px 32px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: transparent;
+  padding: calc(6px * var(--zoom)) calc(30px * var(--zoom)) calc(20px * var(--zoom));
 }
 
 main {
@@ -36,43 +41,45 @@ main {
   margin: 0 auto;
 }
 
+.placeholder {
+  margin: 30vh 0 0;
+  text-align: center;
+  color: var(--muted);
+}
+
 h1, h2, h3, h4, h5, h6 {
   line-height: 1.25;
   margin: 1.25em 0 0.5em;
   font-weight: 600;
+  color: var(--heading);
 }
 
 h1 { font-size: 2em; }
 h2 { font-size: 1.5em; }
 h3 { font-size: 1.25em; }
 
-p {
-  margin: 0.75em 0;
-}
+p { margin: 0.75em 0; }
 
 a {
   color: var(--link);
   text-decoration: none;
 }
 
-a:hover {
-  text-decoration: underline;
-}
+a:hover { text-decoration: underline; }
 
 ul, ol {
   margin: 0.75em 0;
   padding-left: 1.5em;
 }
 
-li {
-  margin: 0.25em 0;
-}
+li { margin: 0.25em 0; }
 
 blockquote {
   margin: 0.75em 0;
   padding-left: 1em;
-  border-left: 4px solid var(--blockquote-border);
-  color: var(--muted);
+  border-left: 0.25em solid var(--border2);
+  color: var(--quote);
+  font-style: italic;
 }
 
 hr {
@@ -87,26 +94,36 @@ table {
   width: 100%;
 }
 
+/* PreviewHTML carries the clipboard's inline `border:1px solid #000` grid.
+   On screen the grid follows the theme; the copy keeps the black rule. */
+table[style], th[style], td[style] {
+  border-color: var(--border2) !important;
+}
+
+th { background: var(--code-bg); }
+
 th, td {
-  border: 1px solid var(--border);
-  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  padding: 0.375em 0.625em;
   text-align: left;
   vertical-align: top;
 }
 
 pre {
   margin: 0.75em 0;
-  padding: 12px 14px;
+  padding: 0.75em 0.875em;
   overflow-x: auto;
   background: var(--code-bg);
   border-radius: 6px;
-  font: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
+  color: var(--code);
 }
 
 code {
-  font: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
+  color: var(--code);
 }
 
 p code, li code {
@@ -120,24 +137,22 @@ img {
   height: auto;
 }
 
-/* highlight.js theme tokens (light) */
 .hljs {
   background: var(--code-bg);
-  color: var(--text);
+  color: var(--fg);
 }
 
-@media (prefers-color-scheme: dark) {
-  .hljs-keyword, .hljs-selector-tag, .hljs-built_in { color: #ff7b72; }
-  .hljs-string, .hljs-title, .hljs-section, .hljs-attribute { color: #a5d6ff; }
-  .hljs-number, .hljs-literal { color: #79c0ff; }
-  .hljs-comment, .hljs-quote { color: #8b949e; }
-  .hljs-meta, .hljs-name { color: #d2a8ff; }
-}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in { color: var(--heading); }
 
-@media (prefers-color-scheme: light) {
-  .hljs-keyword, .hljs-selector-tag, .hljs-built_in { color: #cf222e; }
-  .hljs-string, .hljs-title, .hljs-section, .hljs-attribute { color: #0a3069; }
-  .hljs-number, .hljs-literal { color: #0550ae; }
-  .hljs-comment, .hljs-quote { color: #656d76; }
-  .hljs-meta, .hljs-name { color: #8250df; }
-}
+.hljs-string { color: var(--code); }
+
+.hljs-comment,
+.hljs-quote { color: var(--muted); }
+
+.hljs-number,
+.hljs-literal { color: var(--emphasis); }
+
+.hljs-title,
+.hljs-section { color: var(--link); }

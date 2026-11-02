@@ -7,6 +7,8 @@ struct CopySource {
     var markdown: String
     /// `nil` or empty copies the whole document.
     var selection: Range<String.Index>?
+    /// Which window should show the copy confirmation. Nil stays silent.
+    var documentID: UUID?
 }
 
 /// Undo/redo menu state for the CodeMirror editor (Edit ▸ Undo/Redo).

@@ -18,7 +18,7 @@ let package = Package(
         .testTarget(
             name: "MarkdownCoreTests",
             dependencies: ["MarkdownCore"],
-            resources: [.copy("Golden")]
+            resources: [.copy("Golden"), .copy("Fixtures")]
         ),
     ]
 )

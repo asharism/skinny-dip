@@ -9,6 +9,12 @@ import WebKit
 struct PreviewView: NSViewRepresentable {
     let html: String
     let markdown: String
+    var documentID: UUID
+    var themeVars: [String: String]
+    var zoom: Double
+    var scrollSync: Bool
+    var syncActive: Bool
+    var viewport: EditorViewport
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -22,6 +28,7 @@ struct PreviewView: NSViewRepresentable {
         )
         webView.autoresizingMask = [.width, .height]
         webView.navigationDelegate = context.coordinator
+        webView.useTransparentPage()
         context.coordinator.webView = webView
 
         guard let page = WebBundleResources.page(named: "preview.html") else {
@@ -33,11 +40,21 @@ struct PreviewView: NSViewRepresentable {
 
     func updateNSView(_ webView: PreviewWebView, context: Context) {
         webView.markdown = markdown
+        webView.documentID = documentID
         context.coordinator.parentHTML = html
+        context.coordinator.themeVars = themeVars
+        context.coordinator.zoom = zoom
+        context.coordinator.scrollSync = scrollSync
+        context.coordinator.syncActive = syncActive
+        context.coordinator.viewport = viewport
         guard context.coordinator.isReady else { return }
-        guard html != context.coordinator.lastHTML else { return }
         Task { @MainActor in
-            await context.coordinator.pushHTML(html)
+            await context.coordinator.pushChrome()
+            if html != context.coordinator.lastHTML {
+                await context.coordinator.pushHTML(html)
+            } else if syncActive {
+                await context.coordinator.syncViewport()
+            }
         }
     }
 
@@ -47,36 +64,120 @@ struct PreviewView: NSViewRepresentable {
         var isReady = false
         var lastHTML: String?
         var parentHTML = ""
+        var themeVars: [String: String] = [:]
+        var zoom = 1.0
+        var scrollSync = true
+        var syncActive = true
+        var viewport = EditorViewport(topLine: 1, fraction: 0)
+        private var appliedTheme: [String: String] = [:]
+        private var appliedZoom = -1.0
+        private var appliedSync: Bool?
+        private var syncInFlight = false
+        private var pendingViewport: EditorViewport?
+        private var queuedHTML: String?
+        private var renderInFlight = false
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             isReady = true
             Task { @MainActor in
+                await pushChrome()
                 await pushHTML(parentHTML)
             }
         }
 
-        func pushHTML(_ html: String) async {
+        func pushChrome() async {
             guard let webView else { return }
-            lastHTML = html
-            do {
-                _ = try await webView.callAsyncJavaScript(
-                    "render(html)",
-                    arguments: ["html": html],
+            if themeVars != appliedTheme {
+                appliedTheme = themeVars
+                _ = try? await webView.callAsyncJavaScript(
+                    "setTheme(vars)",
+                    arguments: ["vars": themeVars],
                     contentWorld: .page
                 )
-            } catch {
-                // WebKit failed; the next edit will retry.
             }
+            if zoom != appliedZoom {
+                appliedZoom = zoom
+                _ = try? await webView.callAsyncJavaScript(
+                    "setZoom(zoom)",
+                    arguments: ["zoom": zoom],
+                    contentWorld: .page
+                )
+            }
+            if appliedSync != scrollSync {
+                appliedSync = scrollSync
+                _ = try? await webView.callAsyncJavaScript(
+                    "setScrollSync(on)",
+                    arguments: ["on": scrollSync],
+                    contentWorld: .page
+                )
+            }
+        }
+
+        func pushHTML(_ html: String) async {
+            // Overlapping renders finish out of order: an older body can land
+            // after the paste and leave the preview on the previous document.
+            queuedHTML = html
+            guard !renderInFlight else { return }
+            renderInFlight = true
+            defer { renderInFlight = false }
+            while let next = queuedHTML {
+                queuedHTML = nil
+                guard let webView else { return }
+                let line = viewport.topLine
+                let fraction = Self.jsNumber(viewport.fraction)
+                do {
+                    _ = try await webView.callAsyncJavaScript(
+                        "return render(html, \(line), \(fraction))",
+                        arguments: ["html": next],
+                        contentWorld: .page
+                    )
+                    lastHTML = next
+                } catch {
+                    // Leave lastHTML unchanged so the next update tries again.
+                }
+            }
+        }
+
+        func syncViewport() async {
+            guard syncActive else { return }
+            pendingViewport = viewport
+            guard !syncInFlight else { return }
+            syncInFlight = true
+            defer { syncInFlight = false }
+            while let next = pendingViewport {
+                pendingViewport = nil
+                guard let webView else { return }
+                let line = next.topLine
+                let fraction = Self.jsNumber(next.fraction)
+                _ = try? await webView.callAsyncJavaScript(
+                    "return syncToLine(\(line), \(fraction))",
+                    contentWorld: .page
+                )
+            }
+        }
+
+        private static func jsNumber(_ value: Double) -> String {
+            String(format: "%.4f", locale: Locale(identifier: "en_US_POSIX"), value)
         }
     }
 }
 
 /// ⌘C copies the whole document via CopyWriter, never WebKit's themed HTML.
 final class PreviewWebView: WKWebView {
+    override var isOpaque: Bool { false }
+
+    func useTransparentPage() {
+        underPageBackgroundColor = .clear
+        wantsLayer = true
+        layer?.isOpaque = false
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
     var markdown = ""
+    var documentID: UUID?
 
     @objc func copy(_ sender: Any?) {
-        CopyWriter.writeRichText(markdown: markdown, selection: nil)
+        CopyWriter.writeRichText(markdown: markdown, selection: nil, documentID: documentID)
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -90,11 +191,11 @@ final class PreviewWebView: WKWebView {
         }
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.shift) {
-            CopyWriter.writeMarkdown(markdown: markdown, selection: nil)
+            CopyWriter.writeMarkdown(markdown: markdown, selection: nil, documentID: documentID)
             return true
         }
         if flags.contains(.option) {
-            CopyWriter.writeHTML(markdown: markdown, selection: nil)
+            CopyWriter.writeHTML(markdown: markdown, selection: nil, documentID: documentID)
             return true
         }
         copy(nil)
