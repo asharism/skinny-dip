@@ -15,7 +15,7 @@ final class SkinnyDipApplication: NSApplication {
         return super.sendAction(action, to: target, from: sender)
     }
 
-    private static let showWritingToolsAction = Selector(("showWritingTools:"))
+    private static let showWritingToolsAction = #selector(NSResponder.showWritingTools(_:))
 }
 
 enum EditorWritingToolsCoordinator {
