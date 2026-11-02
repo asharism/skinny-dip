@@ -76,6 +76,24 @@ else
 fi
 echo "Signing: $SIGNING"
 
+# xcodebuild adds the app's Sparkle pin to MarkdownCore's Package.resolved and
+# `swift test` takes it out again. Put the file back so the tree stays clean.
+RESOLVED="Packages/MarkdownCore/Package.resolved"
+if git diff --quiet -- "$RESOLVED"; then
+  trap 'git checkout --quiet -- "$RESOLVED"' EXIT
+fi
+
+# Drop xcodebuild -quiet's "failed with exit code 0" lines: printed for steps
+# that only had warnings, they are not failures.
+quiet_xcodebuild() {
+  local status=0 log
+  log="$(mktemp)"
+  xcodebuild "$@" >"$log" 2>&1 || status=$?
+  grep -v "failed with exit code 0 but produced no further output" "$log" || true
+  rm -f "$log"
+  return "$status"
+}
+
 # ── Build ────────────────────────────────────────────────────────────────────
 step "Generating the Xcode project"
 xcodegen generate --quiet
@@ -83,13 +101,13 @@ xcodegen generate --quiet
 if [[ $SKIP_TESTS == 0 ]]; then
   step "Running tests"
   swift test --package-path Packages/MarkdownCore --quiet
-  xcodebuild test -scheme "$SCHEME" -destination 'platform=macOS,arch=arm64' \
+  quiet_xcodebuild test -scheme "$SCHEME" -destination 'platform=macOS,arch=arm64' \
     -derivedDataPath "$ROOT/.build/xcode" -quiet
 fi
 
 step "Building $APP_NAME $VERSION (Release)"
 rm -rf "$DERIVED/Build/Products/Release/$APP_NAME.app"
-xcodebuild build -scheme "$SCHEME" -configuration Release \
+quiet_xcodebuild build -scheme "$SCHEME" -configuration Release \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath "$DERIVED" -quiet \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
   "${SIGN_SETTINGS[@]}"

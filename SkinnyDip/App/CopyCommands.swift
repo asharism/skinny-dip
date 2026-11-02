@@ -85,7 +85,7 @@ struct CopyCommands: Commands {
         NSApp.sendAction(action, to: nil, from: nil)
     }
 
-    private static let undoSelector = Selector("skinyDipUndo:")
-    private static let redoSelector = Selector("skinyDipRedo:")
+    static let undoSelector = #selector(EditorWebView.skinnyDipUndo(_:))
+    static let redoSelector = #selector(EditorWebView.skinnyDipRedo(_:))
 }
 #endif
