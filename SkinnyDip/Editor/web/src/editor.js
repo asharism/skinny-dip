@@ -1,4 +1,4 @@
-// CodeMirror 6 editor for Skinny Dip (Mac). Bundled into SkinnyDip/Resources/editor.bundle.js.
+// CodeMirror 6 editor for Skinny (Mac). Bundled into SkinnyDip/Resources/editor.bundle.js.
 import {
   lineNumbers,
   highlightActiveLineGutter,

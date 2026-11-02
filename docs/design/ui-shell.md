@@ -1,6 +1,6 @@
 # UI Shell — design spec
 
-Status: agreed Nov 1, 2026 (design session). Decisions: ADR-0005 (tabbed card shell with themes), ADR-0006 (scroll sync) and ADR-0007 (scratch documents, no save prompts). Mockup: open `docs/design/ui-shell-mockup.html` in a browser; the canvas source it was drawn from is in `docs/design/ui-shell-canvas/`. Work is tracked as phase **P5b — UI Shell** in the Build Plan.
+Status: agreed Nov 1, 2026 (design session). Decisions: ADR-0005 (tabbed card shell with themes), ADR-0006 (scroll sync) and ADR-0007 (scratch documents, no save prompts). Mockup: open `docs/design/ui-shell-mockup.html` in a browser; the canvas source it was drawn from is in `docs/design/ui-shell-canvas/`. Work is tracked as phase **P5b — UI Shell** in the build plan (`docs/build-plan.md`).
 
 Inspiration: Rex by Superlogical, for its tab strip, floating panes and themes. We take the *structure* and the *token shape*, not its assets or themes.
 
@@ -229,11 +229,11 @@ VS Code style: **⌘+ / ⌘− / ⌘0** (View ▸ Zoom In / Zoom Out / Actual Si
 
 ## 8. Documents: autosave, scratch, Recently Closed, undo, Duplicate
 
-See ADR-0007. **Skinny Dip never asks "Do you want to save?".**
+See ADR-0007. **Skinny never asks "Do you want to save?".**
 
 - **Saved files** (a file URL exists): autosaved in place as you type. This is `DocumentGroup`'s default; keep it and never show a save prompt for them. ⌘S still works and is harmless.
 - **Scratch documents** (never saved to a location the user picked):
-  - Stored by Skinny Dip at `~/Library/Application Support/Skinny Dip/Scratch/<uuid>.md`, with a sidecar `<uuid>.json` holding `{createdAt, updatedAt, tabIndex, windowIndex, undoHistory?}`. In the sandbox, that's under the app container.
+  - Stored by Skinny at `~/Library/Application Support/Skinny Dip/Scratch/<uuid>.md`, with a sidecar `<uuid>.json` holding `{createdAt, updatedAt, tabIndex, windowIndex, undoHistory?}`. In the sandbox, that's under the app container.
   - Written 1 s after the last edit, on Tab switch, on window close and on quit. Writes are atomic (write to a temp file, then rename).
   - On launch, every scratch document reopens as a Tab in its old window and order, before the untitled-on-launch logic runs. That logic only adds an empty Tab when nothing was restored. This is independent of the macOS "Close windows when quitting an application" setting.
   - ⌘S on a scratch document shows the save panel. After a successful save it becomes a saved file in the same Tab, and its scratch files are deleted.

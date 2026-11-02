@@ -12,6 +12,6 @@ protocol Clipboard {
 
 enum ClipboardType {
     /// A private flavor carrying the Markdown Source of a Copy as Rich Text, so a
-    /// paste back into Skinny Dip can take the Markdown instead of converting HTML.
+    /// paste back into Skinny can take the Markdown instead of converting HTML.
     static let skinnyDipMarkdown = "com.hitesh.SkinnyDip.markdown"
 }
