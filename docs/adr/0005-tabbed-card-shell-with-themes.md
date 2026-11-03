@@ -11,6 +11,7 @@ This moves custom themes and tabs off the MVP "Out" list, each with a paste-work
 ## Consequences
 
 - The clipboard is never themed. Themes reach the window, the Cards, the Editor's syntax colors and the Preview only (ADR-0001 is unchanged).
-- The window is opaque, with no translucency: text contrast and a Preview that resembles the paste destination win over the Rex glass look.
+- Cards are opaque, with no translucency: text contrast and a Preview that resembles the paste destination win over the Rex glass look.
+- **Amended Nov 3, 2026:** the Chrome (title bar, Tab strip and the margins around the Cards) is glass: a behind-window Liquid Glass material tinted by the Theme's window gradient. The reasons above only concern what's inside a Card, so the Chrome can be translucent without hurting reading or paste fidelity. With Reduce Transparency on, the Chrome falls back to the opaque gradient. The title bar also moves to the compact toolbar height so the Tab strip band is thinner.
 - The layout is fixed at two Cards, Editor and Preview. They can sit side by side or stacked, either can be maximized, and the Preview can be hidden. There is no arbitrary splitting.
 - iPad and iPhone (P6) don't get the Tab strip yet. `SplitPane` and the Cards carry over, and the Tab design for iPad is decided in P6.

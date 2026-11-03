@@ -26,6 +26,10 @@ _Avoid_: pane, workspace
 One of the two floating rounded panels in a Tab, the Editor Card or the Preview Card, each with a header and a footer.
 _Avoid_: pane, panel, block
 
+**Chrome**:
+Everything in a Window that isn't a Card: the title bar, the Tab strip and the margins around the Cards. The Chrome is glass; Cards are always opaque.
+_Avoid_: frame, background, non-reading area
+
 **Theme**:
 A named palette (window tint, text, accent, syntax colors) applied to the window, the Cards, the Editor and the Preview, never to the clipboard; themes come in light/dark pairs.
 _Avoid_: skin, color scheme
