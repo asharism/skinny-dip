@@ -162,7 +162,9 @@ struct PreviewView: NSViewRepresentable {
     }
 }
 
-/// ⌘C copies the whole document via CopyWriter, never WebKit's themed HTML.
+/// ⌘C copies through CopyWriter, never WebKit's themed HTML: the Preview selection
+/// mapped back to its Markdown Source (`PreviewSelection`), or the whole document
+/// when nothing is selected.
 final class PreviewWebView: WKWebView {
     override var isOpaque: Bool { false }
 
@@ -177,7 +179,25 @@ final class PreviewWebView: WKWebView {
     var documentID: UUID?
 
     @objc func copy(_ sender: Any?) {
-        CopyWriter.writeRichText(markdown: markdown, selection: nil, documentID: documentID)
+        copySelection(CopyWriter.writeRichText)
+    }
+
+    /// Reads the selection from the page, then writes with the Markdown and document
+    /// captured now, so a render landing in between can't change what is copied.
+    private func copySelection(_ write: @escaping @MainActor (String, Range<String.Index>?, UUID?) -> Void) {
+        let markdown = markdown, documentID = documentID
+        Task { @MainActor in
+            write(markdown, await selectedSourceRange(in: markdown), documentID)
+        }
+    }
+
+    /// Nil, so the whole document is copied, when nothing is selected or the page
+    /// can't be read.
+    func selectedSourceRange(in markdown: String) async -> Range<String.Index>? {
+        guard let lines = try? await callAsyncJavaScript("return selectedSourceLines()", contentWorld: .page) as? [Int],
+              lines.count == 2
+        else { return nil }
+        return PreviewSelection.range(in: markdown, firstBlockLine: lines[0], lastBlockLine: lines[1])
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -191,11 +211,11 @@ final class PreviewWebView: WKWebView {
         }
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if flags.contains(.shift) {
-            CopyWriter.writeMarkdown(markdown: markdown, selection: nil, documentID: documentID)
+            copySelection(CopyWriter.writeMarkdown)
             return true
         }
         if flags.contains(.option) {
-            CopyWriter.writeHTML(markdown: markdown, selection: nil, documentID: documentID)
+            copySelection(CopyWriter.writeHTML)
             return true
         }
         copy(nil)
