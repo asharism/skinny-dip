@@ -55,8 +55,11 @@ struct ThemeTests {
     @Test func testSurfacesFollowAppearance() throws {
         let light = try loadFixture("paper").resolve()
         let dark = try loadFixture("ink").resolve()
-        expect(light.card, rgb: "#ffffff", alpha: 0.80)
-        expect(dark.card, rgb: "#ffffff", alpha: 0.045)
+        // Cards are opaque so the glass Chrome never shows through them (ADR-0005):
+        // the same color as before, composited over the theme background.
+        #expect(light.card == RGBA(hex: "#ffffff").withAlpha(0.80).composited(over: RGBA(hex: "#efe9df")))
+        #expect(dark.card == RGBA(hex: "#ffffff").withAlpha(0.045).composited(over: RGBA(hex: "#0e131b")))
+        #expect(light.card.a == 1 && dark.card.a == 1)
         expect(light.border, rgb: "#000000", alpha: 0.08)
         expect(dark.border, rgb: "#ffffff", alpha: 0.09)
         expect(light.border2, rgb: "#000000", alpha: 0.16)

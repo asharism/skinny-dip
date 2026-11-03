@@ -67,7 +67,8 @@ enum DocumentTabs {
         if window.titleVisibility != .hidden { window.titleVisibility = .hidden }
         if window.titlebarSeparatorStyle != .none { window.titlebarSeparatorStyle = .none }
         if !window.styleMask.contains(.fullSizeContentView) { window.styleMask.insert(.fullSizeContentView) }
-        if !window.isOpaque { window.isOpaque = true }
+        if window.isOpaque { window.isOpaque = false }
+        if window.backgroundColor != .clear { window.backgroundColor = .clear }
         // An empty compact unified toolbar makes AppKit's title bar 38 pt, the height of
         // ours, so the traffic lights sit centred on the Tab strip and stay there
         // through resizing and full screen.

@@ -141,7 +141,7 @@ public struct ThemeFile: Decodable, Equatable, Sendable {
             code: ansiColor(2, fallback: foregroundColor),
             quote: muted,
             onAccent: light ? RGBA(hex: "#ffffff") : RGBA(hex: "#121212"),
-            card: paper.withAlpha(light ? 0.80 : 0.045),
+            card: paper.withAlpha(light ? 0.80 : 0.045).composited(over: backgroundColor),
             border: ink.withAlpha(light ? 0.08 : 0.09),
             border2: ink.withAlpha(light ? 0.16 : 0.22),
             strip: ink.withAlpha(light ? 0.055 : 0.06),
