@@ -81,7 +81,7 @@ Printing the Preview's rendering of the whole document in a paper style that ign
 _Avoid_: export, Print Preview
 
 **Selection Copy**:
-A copy of only the selected part of a document, rendered as if the selection were a document of its own.
+A copy of only the selected part of a document, rendered as if the selection were a document of its own. In the Preview, the selection widens to the whole blocks it touches.
 _Avoid_: partial copy
 
 ## Destinations
