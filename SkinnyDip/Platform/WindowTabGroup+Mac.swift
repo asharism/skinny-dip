@@ -69,13 +69,17 @@ final class WindowTabModel: ObservableObject {
                 Task { @MainActor in self?.groupChanged() }
             })
             groupWatch.append(group.observe(\.isTabBarVisible, options: [.new]) { [weak self] group, _ in
-                guard group.isTabBarVisible else { return }
+                // Our own `toggleTabBar` reports the bar visible again from inside the call.
+                // Reacting to that toggled again forever and pinned the main thread.
+                guard group.isTabBarVisible, !MainActor.assumeIsolated({ WindowTabModel.isHidingTabBar }) else { return }
                 Task { @MainActor in self?.groupChanged() }
             })
         }
     }
 
     private var groupChangePending = false
+    /// True while `refresh` itself is hiding the system tab bar.
+    private static var isHidingTabBar = false
 
     /// One refresh per run-loop turn, however many changes AppKit reports.
     private func groupChanged() {
@@ -93,10 +97,16 @@ final class WindowTabModel: ObservableObject {
         }
     }
 
+    /// How many times `refresh` has run; a test proves the model goes quiet when idle.
+    private(set) var refreshCount = 0
+
     func refresh() {
         guard let window else { return }
+        refreshCount += 1
         if window.tabGroup?.isTabBarVisible == true {
+            Self.isHidingTabBar = true
             window.toggleTabBar(nil)
+            Self.isHidingTabBar = false
         }
         let windows = window.tabGroup?.windows ?? [window]
         let selected = window.tabGroup?.selectedWindow ?? window
