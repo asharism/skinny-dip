@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glass Chrome Mockup</title>
+<!--
+  Mockup for #54 (ADR-0005 amendment): today's 52 pt opaque Chrome next to the proposed
+  38 pt glass Chrome with opaque Cards. Theme values mirror SkinnyDip/Resources/themes/*.json
+  and the role formulas in MarkdownCore Theme.resolve(). The windows sit on a fake desktop so
+  the blur has something to show; drag either window to move it over the wallpaper.
+-->
+<style>
+  :root { --page: #e9e7e3; --ink: #222; --panel: #fff; --line: rgba(0,0,0,.12); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #1d1d1f; --ink: #eee; --panel: #2a2a2c; --line: rgba(255,255,255,.14); } }
+  :root[data-theme="dark"] { --page: #1d1d1f; --ink: #eee; --panel: #2a2a2c; --line: rgba(255,255,255,.14); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  .page { max-width: 1500px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+  h1 { margin: 0; font-size: 22px; }
+  .lede { margin: 0; max-width: 78ch; opacity: .85; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+  .controls label { display: flex; gap: 8px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: inherit; font: inherit; padding: 4px 10px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: #0a84ff; color: #fff; }
+  .desk { position: relative; height: 1000px; border-radius: 14px; overflow: hidden; }
+  .wall { position: absolute; inset: 0; }
+  .wall.bloom { background:
+      radial-gradient(40% 50% at 18% 28%, #ff7a59 0, transparent 70%),
+      radial-gradient(35% 45% at 70% 20%, #4f8cff 0, transparent 70%),
+      radial-gradient(45% 50% at 55% 85%, #31c48d 0, transparent 70%),
+      radial-gradient(30% 40% at 92% 70%, #f7c948 0, transparent 70%),
+      linear-gradient(135deg, #2c2f6b, #6b2c5f); }
+  .wall.calm { background: radial-gradient(60% 70% at 30% 30%, #c9d6df 0, transparent 70%), radial-gradient(50% 60% at 80% 80%, #e8d8c4 0, transparent 70%), linear-gradient(160deg, #b8c4cc, #d9cfc3); }
+  .wall.night { background: radial-gradient(40% 50% at 25% 35%, #3b2a6b 0, transparent 70%), radial-gradient(40% 50% at 75% 70%, #0f4c5c 0, transparent 70%), linear-gradient(160deg, #0b0d14, #1a1426); }
+  .wall .icons { position: absolute; inset: 0; }
+  .wall .icons span { position: absolute; width: 64px; height: 64px; border-radius: 16px; background: rgba(255,255,255,.85); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+  .wall .icons span:nth-child(2n) { background: #ff453a; }
+  .wall .icons span:nth-child(3n) { background: #0a84ff; }
+  .tag { position: absolute; left: 0; top: -30px; font-size: 12px; font-weight: 600; color: #fff; background: rgba(0,0,0,.55); padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
+
+  /* One window, drawn at real point sizes, then scaled to fit. */
+  .win { position: absolute; width: 1180px; height: 760px; transform-origin: 0 0; border-radius: 16px; cursor: grab;
+         box-shadow: 0 0 0 1px rgba(0,0,0,.22), 0 30px 70px rgba(0,0,0,.35); }
+  .win.dragging { cursor: grabbing; }
+  .chrome { position: absolute; inset: 0; border-radius: 16px; overflow: hidden; }
+  .win.glass .chrome { backdrop-filter: blur(var(--blur)) saturate(1.7); -webkit-backdrop-filter: blur(var(--blur)) saturate(1.7); }
+  .tint { position: absolute; inset: 0; }
+  .content { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .titlebar { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 0; }
+  .lights { display: flex; gap: 8px; flex-shrink: 0; }
+  .lights span { width: 12px; height: 12px; border-radius: 6px; }
+  .strip { display: flex; gap: 0; border-radius: var(--stripR); padding: 3px; }
+  .tab { height: var(--tabH); width: 210px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-radius: var(--tabR); font-size: 12.5px; }
+  .tab .t { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .plus { width: var(--btn); height: var(--btn); display: grid; place-items: center; font-size: 18px; border-radius: 8px; }
+  .area { flex: 1; min-height: 0; display: flex; gap: 10px; padding: 2px 12px 12px; }
+  .card { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; }
+  .head { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; font-size: 13px; }
+  .head b { font-weight: 600; }
+  .copy { margin-left: auto; height: 28px; padding: 0 10px; border-radius: 8px; display: flex; align-items: center; font-size: 12.5px; font-weight: 600; }
+  .ed { flex: 1; padding: 8px 22px; font: 13px/1.65 "SF Mono", ui-monospace, Menlo, monospace; white-space: pre; overflow: hidden; }
+  .pv { flex: 1; padding: 6px 30px 20px; font-size: 14px; line-height: 1.6; overflow: hidden; }
+  .pv h2 { font-size: 20px; margin: 10px 0 4px; }
+  .pv p { margin: 0 0 10px; }
+  .pv table { border-collapse: collapse; margin: 6px 0 12px; font-size: 13px; }
+  .pv td, .pv th { border: 1px solid currentColor; padding: 4px 8px; }
+  .foot { height: 28px; display: flex; align-items: center; padding: 0 14px; font-size: 11.5px; }
+  .notes { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 18px; }
+  .notes ul { margin: 6px 0 0; padding-left: 20px; }
+  @media (max-width: 700px) { .desk { height: 760px; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Glass Chrome</h1>
+  <p class="lede">Left: today, a 52 pt title bar on an opaque window. Right: the proposal for #54, a 38 pt compact title bar (Tab 26, strip 32), with the Chrome (title bar and Card margins) as theme-tinted glass and the Cards opaque. Drag either window over the wallpaper.</p>
+
+  <div class="controls">
+    <label>Theme <span class="seg" id="themes"></span></label>
+    <label>Wallpaper <span class="seg" id="walls"></span></label>
+    <label>Tint <input type="range" id="tint" min="20" max="95" value="62"> <span id="tintv"></span></label>
+    <label>Blur <input type="range" id="blur" min="0" max="60" value="30"> <span id="blurv"></span></label>
+    <label><input type="checkbox" id="reduce"> Reduce Transparency</label>
+  </div>
+
+  <div class="desk" id="desk">
+    <div class="wall bloom" id="wall"><div class="icons" id="icons"></div></div>
+    <div class="win" id="today"><div class="tag">Today · 52 pt · opaque</div></div>
+    <div class="win glass" id="proposed"><div class="tag">Proposed · 38 pt · glass Chrome</div></div>
+  </div>
+
+  <div class="notes">
+    <b>What to judge</b>
+    <ul>
+      <li><b>Height:</b> does the 38 pt band look proportional? The real app at 38 pt is screenshotted in the PR.</li>
+      <li><b>Tint:</b> how much of the Theme shows over the glass. Low means more desktop colour bleeds in; high means it looks almost like today.</li>
+      <li><b>Cards stay opaque</b> in every setting, so the Preview still looks like the paste destination (ADR-0005).</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const THEMES = {
+  paper:     { light: true,  bg: "#efe9df", fg: "#2b2b2b", grad: ["#efe9df", "#e4ecee"], muted: "#67625c", accent: "#a84d26", head: "#943f1b" },
+  "sea-glass": { light: true, bg: "#dcece6", fg: "#22382f", grad: ["#dcece6", "#e7edf4"], muted: "#566d66", accent: "#1d7462", head: "#1d7462" },
+  ink:       { light: false, bg: "#0e131b", fg: "#d3dae6", grad: ["#0e131b", "#171e2a"], muted: "#8f9bad", accent: "#7aaeff", head: "#7aaeff" },
+  pine:      { light: false, bg: "#0f1612", fg: "#c8d6ca", grad: ["#0f1612", "#18231c"], muted: "#8a9a8c", accent: "#7fcf9f", head: "#7fcf9f" },
+};
+const NAMES = { paper: "Paper", "sea-glass": "Sea Glass", ink: "Ink", pine: "Pine" };
+const WALLS = { bloom: "Colourful", calm: "Calm", night: "Night" };
+const state = { theme: "paper", wall: "bloom", tint: 62, blur: 30, reduce: false };
+
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const rgba = (h, a) => `rgba(${hex(h).join(",")},${a})`;
+const mix = (top, a, under) => { const t = hex(top), u = hex(under); return `rgb(${t.map((v, i) => Math.round(v * a + u[i] * (1 - a))).join(",")})`; };
+
+function roles(t) {
+  const white = "#ffffff", inkC = t.light ? "#000000" : "#ffffff";
+  return {
+    // Theme.resolve(): card = paper @ 0.80 (light) / 0.045 (dark) over the window.
+    // Pre-composited over the gradient's first stop, so the Card is opaque on glass.
+    card: mix(white, t.light ? 0.80 : 0.045, t.grad[0]),
+    border: rgba(inkC === "#000000" ? "#000000" : "#ffffff", t.light ? 0.08 : 0.09),
+    strip: rgba(inkC, t.light ? 0.055 : 0.06),
+    tab: rgba(white, t.light ? 0.95 : 0.11),
+  };
+}
+
+function windowHTML(compact) {
+  const tb = compact ? 38 : 52, inset = compact ? 78 : 84;
+  return `
+  <div class="chrome"><div class="tint"></div></div>
+  <div class="content" style="--tabH:${compact ? 26 : 32}px;--tabR:${compact ? 8 : 9}px;--stripR:${compact ? 10 : 12}px;--btn:${compact ? 26 : 30}px">
+    <div class="titlebar" style="height:${tb}px">
+      <div style="width:${inset}px;display:flex;justify-content:center;flex-shrink:0"><div class="lights"><span style="background:#ff5f57"></span><span style="background:#febc2e"></span><span style="background:#28c840"></span></div></div>
+      <div class="strip"><div class="tab"><span>▤</span><span class="t">status-update.md</span></div><div class="tab sel"><span>▤</span><span class="t">reply-to-priya.md</span><span>✕</span></div><div class="tab"><span>▤</span><span class="t">Untitled</span></div></div>
+      <div class="plus">+</div>
+    </div>
+    <div class="area">
+      <div class="card"><div class="head"><span class="acc">☰</span><b>reply-to-priya.md</b><span class="mut">Markdown</span></div>
+        <div class="ed">## Quarterly update
+
+Thanks Priya, here's where we are:
+
+- **Launch** moved to *Nov 18*
+- Paste matrix is green for Outlook
+
+| Item   | Owner | Status |
+|--------|-------|--------|
+| Tabs   | Hitesh | Done  |
+| Glass  | Agent  | Mockup |</div>
+        <div class="foot mut">142 words · Ln 4, Col 1</div></div>
+      <div class="card"><div class="head"><span class="acc">◉</span><b>Preview</b><div class="copy">Copy as Rich Text ⌘C</div></div>
+        <div class="pv"><h2>Quarterly update</h2><p>Thanks Priya, here's where we are:</p><ul><li><b>Launch</b> moved to <i>Nov 18</i></li><li>Paste matrix is green for Outlook</li></ul>
+          <table><tr><th>Item</th><th>Owner</th><th>Status</th></tr><tr><td>Tabs</td><td>Hitesh</td><td>Done</td></tr><tr><td>Glass</td><td>Agent</td><td>Mockup</td></tr></table></div>
+        <div class="foot mut">Copies with · Headings −1 · Table borders · Line breaks</div></div>
+    </div>
+  </div>`;
+}
+
+const today = document.getElementById("today"), proposed = document.getElementById("proposed");
+today.insertAdjacentHTML("beforeend", windowHTML(false));
+proposed.insertAdjacentHTML("beforeend", windowHTML(true));
+
+function paint() {
+  const t = THEMES[state.theme], r = roles(t);
+  for (const win of [today, proposed]) {
+    const glass = win === proposed && !state.reduce;
+    win.classList.toggle("glass", glass);
+    win.style.setProperty("--blur", state.blur + "px");
+    const a = glass ? state.tint / 100 : 1;
+    win.querySelector(".tint").style.background = `linear-gradient(135deg, ${rgba(t.grad[0], a)}, ${rgba(t.grad[1], a)})`;
+    win.querySelector(".content").style.color = t.fg;
+    win.querySelector(".strip").style.background = r.strip;
+    win.querySelectorAll(".tab").forEach(el => el.style.background = el.classList.contains("sel") ? r.tab : "transparent");
+    win.querySelectorAll(".tab:not(.sel)").forEach(el => el.style.color = t.muted);
+    win.querySelectorAll(".card").forEach(el => { el.style.background = r.card; el.style.boxShadow = `0 0 0 1px ${r.border}, 0 6px 18px rgba(0,0,0,${t.light ? .07 : .3})`; });
+    win.querySelectorAll(".foot").forEach(el => el.style.borderTop = `1px solid ${r.border}`);
+    win.querySelectorAll(".mut").forEach(el => el.style.color = t.muted);
+    win.querySelectorAll(".acc").forEach(el => el.style.color = t.accent);
+    win.querySelectorAll(".pv h2").forEach(el => el.style.color = t.head);
+    win.querySelectorAll(".copy").forEach(el => { el.style.background = t.accent; el.style.color = t.light ? "#fff" : "#111"; });
+  }
+  document.getElementById("wall").className = "wall " + state.wall;
+  document.getElementById("tintv").textContent = state.tint + "%";
+  document.getElementById("blurv").textContent = state.blur + "px";
+  document.getElementById("tint").disabled = document.getElementById("blur").disabled = state.reduce;
+}
+
+function seg(id, options, key) {
+  const box = document.getElementById(id);
+  for (const [value, label] of Object.entries(options)) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.onclick = () => { state[key] = value; box.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); paint(); };
+    b.setAttribute("aria-pressed", state[key] === value);
+    box.appendChild(b);
+  }
+}
+seg("themes", NAMES, "theme");
+seg("walls", WALLS, "wall");
+document.getElementById("tint").oninput = e => { state.tint = +e.target.value; paint(); };
+document.getElementById("blur").oninput = e => { state.blur = +e.target.value; paint(); };
+document.getElementById("reduce").onchange = e => { state.reduce = e.target.checked; paint(); };
+
+// Desktop icons so the blur has edges to soften.
+const icons = document.getElementById("icons");
+for (let i = 0; i < 22; i++) {
+  const s = document.createElement("span");
+  s.style.left = (4 + (i * 37) % 92) + "%"; s.style.top = (6 + (i * 53) % 86) + "%";
+  icons.appendChild(s);
+}
+
+// Layout: scale both windows to fit, side by side when wide, stacked when narrow.
+const desk = document.getElementById("desk");
+const pos = { today: null, proposed: null };
+function layout() {
+  const w = desk.clientWidth, wide = w > 1100;
+  const scale = wide ? Math.min(0.62, (w - 60) / (2 * 1180)) : Math.min(0.62, (w - 24) / 1180);
+  desk.style.height = (wide ? 760 * scale + 120 : 2 * 760 * scale + 160) + "px";
+  for (const [key, win] of [["today", today], ["proposed", proposed]]) {
+    win.style.transform = `scale(${scale})`;
+    win.dataset.scale = scale;
+    const p = pos[key] || (wide
+      ? { x: key === "today" ? 20 : w - 1180 * scale - 20, y: 60 }
+      : { x: 12, y: key === "today" ? 50 : 760 * scale + 110 });
+    win.style.left = p.x + "px"; win.style.top = p.y + "px";
+    win.querySelector(".tag").style.transform = `scale(${1 / scale})`;
+    win.querySelector(".tag").style.transformOrigin = "0 100%";
+  }
+}
+for (const [key, win] of [["today", today], ["proposed", proposed]]) {
+  win.addEventListener("pointerdown", e => {
+    const start = { x: e.clientX, y: e.clientY, l: parseFloat(win.style.left), t: parseFloat(win.style.top) };
+    win.setPointerCapture(e.pointerId); win.classList.add("dragging"); win.style.zIndex = 2;
+    (key === "today" ? proposed : today).style.zIndex = 1;
+    const move = ev => { pos[key] = { x: start.l + ev.clientX - start.x, y: start.t + ev.clientY - start.y }; win.style.left = pos[key].x + "px"; win.style.top = pos[key].y + "px"; };
+    const up = () => { win.classList.remove("dragging"); win.removeEventListener("pointermove", move); win.removeEventListener("pointerup", up); };
+    win.addEventListener("pointermove", move); win.addEventListener("pointerup", up);
+  });
+}
+addEventListener("resize", () => { pos.today = pos.proposed = null; layout(); });
+layout(); paint();
+</script>
+</body>
+</html>

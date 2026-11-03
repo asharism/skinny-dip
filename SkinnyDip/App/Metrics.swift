@@ -6,23 +6,23 @@ struct Metrics: Equatable {
 
     private func scaled(_ base: Double) -> CGFloat { CGFloat(base * zoom) }
 
-    /// Never below 52: the unified toolbar keeps the traffic lights centred in
-    /// a 52 pt title bar, and a shorter bar would slide the Cards under them.
-    var titleBar: CGFloat { max(52, scaled(52)) }
+    /// Never below 38: the compact unified toolbar keeps the traffic lights centred
+    /// in a 38 pt title bar, and a shorter bar would slide the Cards under them.
+    var titleBar: CGFloat { max(38, scaled(38)) }
     /// The strip hugs its Tabs: one Tab plus the inset above and below.
     var stripHeight: CGFloat { tabHeight + stripInset * 2 }
-    var trafficLightInset: CGFloat { 84 }
-    var tabHeight: CGFloat { scaled(32) }
+    var trafficLightInset: CGFloat { 78 }
+    var tabHeight: CGFloat { scaled(26) }
     var tabMaxWidth: CGFloat { scaled(210) }
     var tabMinWidth: CGFloat { scaled(120) }
-    var tabRadius: CGFloat { scaled(9) }
+    var tabRadius: CGFloat { scaled(8) }
     var tabFont: CGFloat { scaled(12.5) }
     var tabIcon: CGFloat { scaled(14) }
     var editedDot: CGFloat { scaled(7) }
-    var titleButton: CGFloat { scaled(30) }
+    var titleButton: CGFloat { scaled(26) }
     var titleButtonRadius: CGFloat { scaled(8) }
     var stripInset: CGFloat { scaled(3) }
-    var stripRadius: CGFloat { scaled(12) }
+    var stripRadius: CGFloat { scaled(10) }
     var cardRadius: CGFloat { scaled(12) }
     var cardPadding: CGFloat { scaled(12) }
     var cardPaddingTop: CGFloat { scaled(2) }

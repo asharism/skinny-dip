@@ -82,12 +82,7 @@ struct ContentView: View {
     private var shell: some View {
         let points = GradientAngle.points(degrees: 140)
         return ZStack {
-            LinearGradient(
-                colors: theme.windowGradient.map { Color($0) },
-                startPoint: points.0,
-                endPoint: points.1
-            )
-            .ignoresSafeArea()
+            ChromeBackground(theme: theme, points: points)
             VStack(spacing: 0) {
                 titleBar
                 SplitPane(
@@ -110,7 +105,6 @@ struct ContentView: View {
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .background(WindowChrome(
             title: displayTitle,
-            background: NSColor(theme.windowGradient.first ?? theme.foreground),
             appearance: windowAppearance,
             model: tabs,
             onWindow: { next in

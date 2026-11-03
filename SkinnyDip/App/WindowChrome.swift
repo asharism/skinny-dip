@@ -4,7 +4,6 @@ import SwiftUI
 
 struct WindowChrome: NSViewRepresentable {
     var title: String
-    var background: NSColor
     var appearance: NSAppearance?
     var model: WindowTabModel
     var onWindow: (NSWindow) -> Void
@@ -31,7 +30,6 @@ struct WindowChrome: NSViewRepresentable {
         var parent: WindowChrome?
         private var appliedTitle: String?
         private var appliedAppearance: String?
-        private var appliedBackground: NSColor?
         @MainActor
         func apply(_ window: NSWindow) {
             guard let parent else { return }
@@ -39,10 +37,10 @@ struct WindowChrome: NSViewRepresentable {
                 appliedTitle = parent.title
                 window.title = parent.title
             }
-            if appliedBackground != parent.background {
-                appliedBackground = parent.background
-                window.backgroundColor = parent.background
-                window.isOpaque = true
+            // Clear, so the glass Chrome can show the desktop (ADR-0005, amended).
+            if window.isOpaque || window.backgroundColor != .clear {
+                window.isOpaque = false
+                window.backgroundColor = .clear
             }
             let appearance = parent.appearance?.name.rawValue ?? ""
             if appliedAppearance != appearance {
