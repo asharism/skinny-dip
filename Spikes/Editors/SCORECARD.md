@@ -51,7 +51,7 @@ The native Editor Backend (`NSTextView` on TextKit 2, ADR-0010), picked under Se
 | Scroll smoothness, top to bottom | not verified (needs hands-on) |
 | Undo / redo grouping | ⚠️ paste is one undo step, and an outside text change is one undo step (`NativeEditorTests`); typing grouping is AppKit's own, not checked by hand |
 | Multi-cursor | ❌ not supported (accepted in ADR-0010) |
-| Memory, one document open (`footprint`, Debug build) | app 147 MB + WebContent 19 + GPU 10 + Networking 5 MB (total ≈ 181 MB) |
-| Same build, CodeMirror selected | app 146 MB + WebContent 28 + 19 + GPU 11 + Networking 5 MB (total ≈ 209 MB) |
+| Memory, one document open (`footprint`, Debug build) | app 147 MB + WebContent 19 + GPU 11 + Networking 5 MB (footprint summary 182 MB) |
+| Same build, CodeMirror selected | app 147 MB + WebContent 28 + 19 + GPU 11 + Networking 5 MB (footprint summary 210 MB) |
 
 The native backend drops one WebContent process (the Editor's); the Preview still needs WebKit. Both builds were measured right after launch with the same one-paragraph document, so these numbers say nothing about growth over a long run (#62 soak).
