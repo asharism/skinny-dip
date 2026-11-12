@@ -66,16 +66,16 @@ struct CopyCommands: Commands {
     }
 
     private func paste() {
-        if let editor = EditorWebView.pasteTarget() {
-            editor.paste(nil)
+        if let editor = EditorResponders.active() {
+            editor.insertMarkdownFromPasteboard(plain: false)
         } else {
             send(#selector(NSText.paste(_:)))
         }
     }
 
     private func pasteAsPlainText() {
-        if let editor = EditorWebView.pasteTarget() {
-            editor.pasteAsPlainText(nil)
+        if let editor = EditorResponders.active() {
+            editor.insertMarkdownFromPasteboard(plain: true)
         } else {
             send(#selector(NSTextView.pasteAsPlainText(_:)))
         }
@@ -85,7 +85,7 @@ struct CopyCommands: Commands {
         NSApp.sendAction(action, to: nil, from: nil)
     }
 
-    static let undoSelector = #selector(EditorWebView.skinnyDipUndo(_:))
-    static let redoSelector = #selector(EditorWebView.skinnyDipRedo(_:))
+    static let undoSelector = EditorResponders.undoSelector
+    static let redoSelector = EditorResponders.redoSelector
 }
 #endif

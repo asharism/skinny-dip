@@ -144,6 +144,22 @@ struct ScratchStoreTests {
         #expect(try store.open().first?.meta.undoHistory == history)
     }
 
+    @Test func roundTripsTheHistoryBackendTag() throws {
+        let (store, _) = try makeStore()
+        let id = UUID()
+        var tagged = meta(Date(timeIntervalSince1970: 10), window: 0, tab: 0, history: "h")
+        tagged.undoHistoryBackend = "codeMirror"
+        try store.save(id: id, text: "body", meta: tagged)
+        #expect(try store.open().first?.meta.undoHistoryBackend == "codeMirror")
+    }
+
+    @Test func legacySidecarDecodesWithoutABackendTag() throws {
+        let legacy = #"{"createdAt":0,"updatedAt":0,"windowIndex":0,"tabIndex":0,"undoHistory":"h"}"#
+        let meta = try JSONDecoder().decode(ScratchMeta.self, from: Data(legacy.utf8))
+        #expect(meta.undoHistory == "h")
+        #expect(meta.undoHistoryBackend == nil)
+    }
+
     @Test func mismatchedHistoryIsDropped() {
         let json = #"{"doc":"hello","history":[]}"#
         #expect(ScratchRestore.history(forText: "hello", storedHistoryJSON: json) == json)

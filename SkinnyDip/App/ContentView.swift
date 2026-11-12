@@ -117,7 +117,12 @@ struct ContentView: View {
             applyTitle(immediate: true)
             scheduleWords(immediate: true)
             refreshPreview()
-            editor.pendingHistory = ScratchRestore.history(forText: document.source, storedHistoryJSON: document.undoHistory)
+            editor.pendingHistory = ScratchHistory.restorable(
+                forText: document.source,
+                storedHistoryJSON: document.undoHistory,
+                storedBackend: document.undoHistoryBackend,
+                current: .current
+            )
             registerWindow()
         }
         .onChange(of: document.source) { _, newValue in
@@ -310,7 +315,7 @@ struct ContentView: View {
     }
 
     private var editorPane: some View {
-        EditorView(
+        EditorHost(
             text: $document.source,
             selection: $selection,
             canUndo: $canUndo,
