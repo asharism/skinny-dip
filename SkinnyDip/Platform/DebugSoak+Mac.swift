@@ -380,12 +380,28 @@ final class SoakRunner {
             }
             window.contentView.map(collect)
             for web in webViews {
-                let selector = NSSelectorFromString("_webProcessIdentifier")
-                guard web.responds(to: selector), let pid = (web.value(forKey: "_webProcessIdentifier") as? NSNumber)?.int32Value, pid > 0 else { continue }
+                guard let pid = Self.pid(web, "_webProcessIdentifier") else { continue }
                 result.append(Process(tab: index + 1, role: web is DebugTypingTarget ? "editor" : "preview", pid: pid))
+            }
+            // WebKit's shared helpers, when the SPI answers. The sampler cross-checks them.
+            if index == 0, let web = webViews.first {
+                if let pid = Self.pid(web, "_gpuProcessIdentifier") {
+                    result.append(Process(tab: 0, role: "gpu", pid: pid))
+                }
+                if let pid = Self.pid(web.configuration.websiteDataStore, "_networkProcessIdentifier")
+                    ?? Self.pid(web.configuration.processPool, "_networkProcessIdentifier") {
+                    result.append(Process(tab: 0, role: "networking", pid: pid))
+                }
             }
         }
         return result
+    }
+
+    private static func pid(_ object: NSObject, _ key: String) -> Int32? {
+        guard object.responds(to: NSSelectorFromString(key)),
+              let pid = (object.value(forKey: key) as? NSNumber)?.int32Value, pid > 0
+        else { return nil }
+        return pid
     }
 
     private func fail(_ message: String) {
