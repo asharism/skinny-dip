@@ -22,7 +22,7 @@ struct CopyCommands: Commands {
 
         CommandGroup(after: .toolbar) {
             Button("Toggle Preview") {
-                NotificationCenter.default.post(name: .togglePreview, object: nil)
+                NotificationCenter.default.post(name: .togglePreview, object: DocumentTabs.frontDocumentTab())
             }
             .keyboardShortcut("p", modifiers: [.command, .shift])
         }

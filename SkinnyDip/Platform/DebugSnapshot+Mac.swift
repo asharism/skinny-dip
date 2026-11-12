@@ -31,7 +31,7 @@ enum DebugSnapshot {
     }
 
     private static func capture(to url: URL) async {
-        let window = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first { $0.isVisible }
+        let window = NSApp.keyWindow ?? DocumentTabs.frontDocumentTab() ?? NSApp.windows.first { $0.isVisible }
         guard let root = window?.contentView?.superview ?? window?.contentView else { return }
         let bounds = root.bounds
         guard let rep = root.bitmapImageRepForCachingDisplay(in: bounds) else { return }

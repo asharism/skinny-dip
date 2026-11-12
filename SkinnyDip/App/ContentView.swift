@@ -28,7 +28,8 @@ struct ContentView: View {
     @State private var wordTask: Task<Void, Never>?
     @State private var titleTask: Task<Void, Never>?
     @State private var scratchTask: Task<Void, Never>?
-    @AppStorage("showPreview") private var showPreview = true
+    // Per Tab: seeded from Settings › General, toggled only in this Tab.
+    @State private var showPreview = PreviewVisibility.initial()
     @AppStorage("previewLeadingFraction") private var previewLeadingFraction: Double = 0.5
     @AppStorage("paneOrientation") private var paneOrientation = "sideBySide"
     @AppStorage("scrollSync") private var scrollSync = true
@@ -141,7 +142,8 @@ struct ContentView: View {
             applyTitle(immediate: true)
         }
         .onChange(of: window) { registerWindow() }
-        .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { note in
+            guard let window, note.object as? NSWindow === window else { return }
             showPreview.toggle()
         }
         .onReceive(NotificationCenter.default.publisher(for: .duplicateDocument)) { _ in
