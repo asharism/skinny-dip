@@ -3,6 +3,7 @@ import SwiftUI
 import MarkdownCore
 
 /// The ⌘, window. General keeps the render toggles. Appearance picks themes and Zoom.
+/// Advanced picks the Editor Backend.
 struct SettingsView: View {
     @Environment(\.metrics) private var metrics
     @EnvironmentObject private var themes: ThemeStore
@@ -21,6 +22,8 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             appearance
                 .tabItem { Label("Appearance", systemImage: "paintpalette") }
+            AdvancedSettingsView()
+                .tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
         }
         .frame(width: metrics.settingsWidth)
         .padding(metrics.settingsPadding)
