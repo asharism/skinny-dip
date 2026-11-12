@@ -90,6 +90,8 @@ for _ in $(seq 60); do
 done
 [[ -n $pid ]] || { echo "App did not start" >&2; exit 1; }
 trap 'kill "$pid" 2>/dev/null || true' EXIT
+# A sleeping Mac stalls both the driver and the sampler; the summary flags any gap.
+caffeinate -dimsu -w "$pid" &
 
 state() { python3 -c 'import json,sys
 try: print(json.load(open(sys.argv[1])).get("state","starting"))

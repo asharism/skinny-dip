@@ -41,6 +41,13 @@ def main():
     typing = [r for r in rows if r["state"] == "typing"]
     idle = [r for r in rows if r["state"] in ("idle", "done")]
     print(f"{sys.argv[1]}: {len(rows)} samples, {len(typing)} while typing, {len(idle)} idle")
+    seconds = [float(r["seconds"]) for r in rows]
+    steps = sorted(b - a for a, b in zip(seconds, seconds[1:]))
+    if steps:
+        usual = steps[len(steps) // 2]
+        gaps = [s for s in steps if s > 2 * usual + 5]
+        if gaps:
+            print(f"INVALID RUN: {len(gaps)} sampling gaps (longest {max(gaps):.0f} s; the Mac probably slept)")
     print()
     header = f"{'process':<22}{'start':>8}{'end typing':>12}{'end idle':>10}{'peak':>8}{'MB/h typing':>13}{'idle Δ':>9}"
     print(header)
