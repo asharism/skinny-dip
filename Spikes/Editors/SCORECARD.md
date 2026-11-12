@@ -34,3 +34,24 @@ Accepted 2026-11-01 in the running Mac app. WebKit spell checking is turned on v
 | ⌃A, ⌃E, ⌃K | ✅ |
 
 **Verdict:** CodeMirror 6 (ADR-0003). Issue #6 native-text checks are done.
+
+### Native (real app, issue #64)
+
+The native Editor Backend (`NSTextView` on TextKit 2, ADR-0010), picked under Settings › Advanced › Editor. Scored by an agent in the Debug agent build (`com.hitesh.SkinnyDipAgent1`) on 2026-11-11. The agent's terminal can't send keystrokes, dictation or clicks, so rows that need hands on the keyboard are left for a human. The existing CodeMirror column above stays as it was.
+
+| Check | Native (real app) |
+| --- | --- |
+| Spell check (red underlines) | ✅ red underlines on misspellings in a restored Scratch Document (snapshot); `isContinuousSpellCheckingEnabled` on (`NativeEditorTests.smartQuotesOff`) |
+| Autocorrect while typing | not verified (needs hands-on); the setting follows `NSSpellChecker.isAutomaticSpellingCorrectionEnabled` (test) |
+| Smart quotes, dashes, text replacement | ✅ off (test), so the Markdown Source is never rewritten |
+| Dictation | not verified (needs hands-on) |
+| Writing Tools: Rewrite / Proofread | not verified (needs hands-on); `writingToolsBehavior = .complete` (test) |
+| ⌃A, ⌃E, ⌃K | not verified (needs hands-on); AppKit text bindings, no workaround |
+| Typing feel at line 9,000 | not verified (needs hands-on). Highlighting the 10,000-line sample (213k UTF-16 units, 13.9k spans) takes 85 ms in a Debug build and 27 ms in Release, off the main thread after a 120 ms pause |
+| Scroll smoothness, top to bottom | not verified (needs hands-on) |
+| Undo / redo grouping | ⚠️ paste is one undo step, and an outside text change is one undo step (`NativeEditorTests`); typing grouping is AppKit's own, not checked by hand |
+| Multi-cursor | ❌ not supported (accepted in ADR-0010) |
+| Memory, one document open (`footprint`, Debug build) | app 147 MB + WebContent 19 + GPU 10 + Networking 5 MB (total ≈ 181 MB) |
+| Same build, CodeMirror selected | app 146 MB + WebContent 28 + 19 + GPU 11 + Networking 5 MB (total ≈ 209 MB) |
+
+The native backend drops one WebContent process (the Editor's); the Preview still needs WebKit. Both builds were measured right after launch with the same one-paragraph document, so these numbers say nothing about growth over a long run (#62 soak).
