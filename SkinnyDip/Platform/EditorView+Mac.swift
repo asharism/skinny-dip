@@ -297,7 +297,7 @@ struct EditorView: NSViewRepresentable {
 }
 
 /// Edit menu Select All must reach CodeMirror, not WebKit's viewport-limited default.
-final class EditorWebView: WKWebView {
+final class EditorWebView: WKWebView, EditorResponder {
     override var isOpaque: Bool { false }
 
     func useTransparentPage() {
@@ -368,32 +368,6 @@ final class EditorWebView: WKWebView {
         }
     }
 
-    /// The editor web view in the key window, when ⌘V should land in the document
-    /// rather than in another text field (Settings, an open panel).
-    static func pasteTarget() -> EditorWebView? {
-        if let editor = enclosingEditor(NSApp.keyWindow?.firstResponder) { return editor }
-        if NSApp.keyWindow?.firstResponder is NSTextView { return nil }
-        return editorWebView(in: NSApp.keyWindow?.contentView)
-    }
-
-    private static func enclosingEditor(_ responder: NSResponder?) -> EditorWebView? {
-        var current = responder
-        while let next = current {
-            if let editor = next as? EditorWebView { return editor }
-            current = next.nextResponder
-        }
-        return nil
-    }
-
-    private static func editorWebView(in view: NSView?) -> EditorWebView? {
-        guard let view else { return nil }
-        if let editor = view as? EditorWebView { return editor }
-        for child in view.subviews {
-            if let editor = editorWebView(in: child) { return editor }
-        }
-        return nil
-    }
-
     /// Tests point this at a private pasteboard.
     var pasteboard: NSPasteboard = .general
 
@@ -409,6 +383,10 @@ final class EditorWebView: WKWebView {
     @objc func pasteAsPlainText(_ sender: Any?) {
         guard let text = PasteAsMarkdown.plainText(for: pasteboard.pasteContents) else { return }
         insertEditorText(text)
+    }
+
+    func insertMarkdownFromPasteboard(plain: Bool) {
+        plain ? pasteAsPlainText(nil) : paste(nil)
     }
 
     private var lastInsertedPaste: (text: String, at: Date)?
