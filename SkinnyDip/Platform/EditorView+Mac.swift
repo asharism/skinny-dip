@@ -196,6 +196,9 @@ struct EditorView: NSViewRepresentable {
             case "documentChanged":
                 guard let newText = body["text"] as? String else { return }
                 lastEditorText = newText
+                #if DEBUG
+                parent.controller.debugTextObserver?(newText)
+                #endif
                 let immediate = body["immediate"] as? Bool ?? false
                 debounceTask?.cancel()
                 if immediate {

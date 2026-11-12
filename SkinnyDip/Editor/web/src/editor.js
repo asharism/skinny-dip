@@ -415,5 +415,14 @@ window.ensureWritingToolsSelection = () => {
   return true;
 };
 
+// Soak harness (#62, Debug builds call it): types like a person, one character per
+// transaction, so undo history, the document binding and the Scratch flush all run.
+window.debugType = (text) => {
+  for (const ch of String(text ?? "")) {
+    view.dispatch(view.state.replaceSelection(ch), { userEvent: "input.type", scrollIntoView: true });
+  }
+  return view.state.doc.length;
+};
+
 window.editorView = view;
 post({ event: "editorReady" });

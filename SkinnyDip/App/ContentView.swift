@@ -90,11 +90,11 @@ struct ContentView: View {
                     axis: stacked ? .vertical : .horizontal,
                     spacing: metrics.cardGap,
                     leadingVisible: zoomed != .preview,
-                    trailingVisible: showPreview && zoomed != .editor
+                    trailingVisible: showPreview && zoomed != .editor && !soakHidesPreview
                 ) {
                     editorCard
                 } trailing: {
-                    previewCard
+                    if soakHidesPreview { Color.clear } else { previewCard }
                 }
                 .padding(.horizontal, metrics.cardPadding)
                 .padding(.bottom, metrics.cardPadding)
@@ -432,6 +432,7 @@ struct ContentView: View {
     }
 
     private func refreshPreview() {
+        guard !soakHidesPreview else { return }
         previewState.update(source: document.source, options: renderOptions)
     }
 
@@ -507,11 +508,28 @@ struct ContentView: View {
         scratchTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard !Task.isCancelled else { return }
-            let history = await editor.exportState?()
+            let history = soakSkipsHistoryExport ? nil : await editor.exportState?()
             ScratchSession.shared.flush(id: id, history: history)
             clearEdited()
             tabs.refresh()
         }
+    }
+
+    /// Soak harness attribution switches (#62); always false outside Debug builds.
+    private var soakHidesPreview: Bool {
+        #if DEBUG
+        DebugSoak.hidesPreview
+        #else
+        false
+        #endif
+    }
+
+    private var soakSkipsHistoryExport: Bool {
+        #if DEBUG
+        DebugSoak.skipsHistoryExport
+        #else
+        false
+        #endif
     }
 
     private func registerWindow() {
