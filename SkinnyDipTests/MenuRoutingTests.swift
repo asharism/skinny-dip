@@ -21,6 +21,26 @@ struct MenuRoutingTests {
         #expect(EditorWebView.instancesRespond(to: CopyCommands.redoSelector))
     }
 
+    @Test func nativeTextViewIsAnEditorResponder() {
+        let textView: AnyObject = NativeEditorTextView(usingTextLayoutManager: true)
+        #expect(textView is any EditorResponder)
+    }
+
+    @Test func nativeTextViewAnswersMenuUndoAndRedo() {
+        #expect(NativeEditorTextView.instancesRespond(to: CopyCommands.undoSelector))
+        #expect(NativeEditorTextView.instancesRespond(to: CopyCommands.redoSelector))
+    }
+
+    @Test func nativeMenuUndoAndRedoRouteToItsUndoManager() {
+        let harness = NativeEditorHarness(text: "")
+        defer { harness.teardown() }
+        harness.event { harness.textView.insertText("typed", replacementRange: NSRange(location: 0, length: 0)) }
+        #expect(NSApp.sendAction(CopyCommands.undoSelector, to: harness.textView, from: nil))
+        #expect(harness.textView.string == "")
+        #expect(NSApp.sendAction(CopyCommands.redoSelector, to: harness.textView, from: nil))
+        #expect(harness.textView.string == "typed")
+    }
+
     @Test func undoAndRedoSelectorsAreTheResponderMethods() {
         #expect(CopyCommands.undoSelector == NSSelectorFromString("skinnyDipUndo:"))
         #expect(CopyCommands.redoSelector == NSSelectorFromString("skinnyDipRedo:"))
