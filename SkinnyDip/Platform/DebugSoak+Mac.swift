@@ -28,6 +28,19 @@ extension EditorWebView: DebugTypingTarget {
     }
 }
 
+extension NativeEditorTextView: DebugTypingTarget {
+    var debugEditorController: EditorController? { editorCoordinator?.parent.controller }
+
+    /// Types through `insertText(_:replacementRange:)`, the path a key press takes.
+    func debugType(_ text: String) async -> Bool {
+        guard editorCoordinator != nil else { return false }
+        for character in text {
+            insertText(String(character), replacementRange: selectedRange())
+        }
+        return true
+    }
+}
+
 /// The text the soak harness types: prose with headings, lists, a table and code fences,
 /// in the shape of the editor spikes' `SampleDocument`. The same seed gives the same text.
 enum SoakScript {

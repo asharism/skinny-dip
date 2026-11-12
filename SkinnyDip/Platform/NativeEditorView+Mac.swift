@@ -209,6 +209,9 @@ struct NativeEditorView: NSViewRepresentable {
             highlighter?.textDidChange()
             let newText = textView.string
             lastEditorText = newText
+            #if DEBUG
+            parent.controller.debugTextObserver?(newText)
+            #endif
             guard !isApplyingRemoteEdit else {
                 parent.text = newText
                 return
