@@ -134,6 +134,7 @@ final class ScratchSession: ObservableObject {
                 source: next.text,
                 scratchID: next.id,
                 undoHistory: next.meta.undoHistory,
+                undoHistoryBackend: next.meta.undoHistoryBackend,
                 pinnedTitle: next.pinnedTitle,
                 createdAt: next.meta.createdAt
             )
@@ -190,7 +191,8 @@ final class ScratchSession: ObservableObject {
             updatedAt: Date(),
             windowIndex: placement.window,
             tabIndex: placement.tab,
-            undoHistory: live.undoHistory
+            undoHistory: live.undoHistory,
+            undoHistoryBackend: ScratchHistory.tag(for: live.undoHistory, backend: .current)
         )
         let text = live.text
         let store = store
@@ -217,7 +219,8 @@ final class ScratchSession: ObservableObject {
                 updatedAt: Date(),
                 windowIndex: placement.window,
                 tabIndex: placement.tab,
-                undoHistory: live.undoHistory
+                undoHistory: live.undoHistory,
+                undoHistoryBackend: ScratchHistory.tag(for: live.undoHistory, backend: .current)
             )
             try? store.save(id: id, text: live.text, meta: meta)
             (window.windowController?.document as? NSDocument)?.updateChangeCount(.changeCleared)
@@ -248,6 +251,14 @@ final class ScratchSession: ObservableObject {
 
     func terminate() -> NSApplication.TerminateReply {
         isTerminating = true
+        saveAll()
+        return .terminateNow
+    }
+
+    /// Writes every Scratch Document with its placement and history, the way
+    /// quit does. Switching Editor Backend calls it before the relaunch so the
+    /// new instance finds everything on disk.
+    func saveAll() {
         for (id, var live) in lives {
             if let history = live.controller?.exportHistoryBlocking() {
                 live.undoHistory = capped(history)
@@ -258,13 +269,24 @@ final class ScratchSession: ObservableObject {
                 updatedAt: Date(),
                 windowIndex: placement.window,
                 tabIndex: placement.tab,
-                undoHistory: live.undoHistory
+                undoHistory: live.undoHistory,
+                undoHistoryBackend: ScratchHistory.tag(for: live.undoHistory, backend: .current)
             )
             try? store.save(id: id, text: live.text, meta: meta)
             (live.window?.windowController?.document as? NSDocument)?.updateChangeCount(.changeCleared)
             lives[id] = live
         }
-        return .terminateNow
+    }
+
+    /// Saves edited documents that live in the user's own files, in place.
+    func saveUserFiles() {
+        for document in NSDocumentController.shared.documents {
+            guard let url = document.fileURL, !document.isDraft, document.isDocumentEdited,
+                  !url.path.contains("/Scratch/")
+            else { continue }
+            try? document.write(to: url, ofType: document.fileType ?? "net.daringfireball.markdown")
+            document.updateChangeCount(.changeCleared)
+        }
     }
 
     func discardScratch(id: UUID) {
