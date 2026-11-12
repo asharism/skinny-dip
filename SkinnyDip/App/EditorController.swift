@@ -16,6 +16,10 @@ final class EditorController: ObservableObject {
     var importState: ((String) async -> Void)?
     var pendingHistory: String?
     private var latestHistory: String?
+    #if DEBUG
+    /// Soak harness (#62): the Editor Backend calls this with every text change it reports.
+    var debugTextObserver: ((String) -> Void)?
+    #endif
 
     func noteHistory(_ json: String?) {
         latestHistory = json
