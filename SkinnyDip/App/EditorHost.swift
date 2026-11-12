@@ -16,9 +16,19 @@ struct EditorHost: View {
 
     var body: some View {
         switch backend {
-        case .codeMirror, .native:
-            // The native backend lands in #64; until then it falls back to CodeMirror.
+        case .codeMirror:
             EditorView(
+                text: $text,
+                selection: $selection,
+                canUndo: $canUndo,
+                canRedo: $canRedo,
+                hasEditorSelection: $hasEditorSelection,
+                documentID: documentID,
+                themeVars: themeVars,
+                controller: controller
+            )
+        case .native:
+            NativeEditorView(
                 text: $text,
                 selection: $selection,
                 canUndo: $canUndo,

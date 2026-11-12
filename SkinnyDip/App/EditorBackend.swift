@@ -28,13 +28,8 @@ enum EditorBackendKind: String, CaseIterable, Sendable {
         }
     }
 
-    /// Native is listed but disabled until its backend lands (#64).
-    var isAvailable: Bool {
-        switch self {
-        case .codeMirror: true
-        case .native: false
-        }
-    }
+    /// Every backend can be picked. Kept so a backend can be listed before it lands.
+    var isAvailable: Bool { true }
 
     private var availableOrDefault: EditorBackendKind { isAvailable ? self : .codeMirror }
 }

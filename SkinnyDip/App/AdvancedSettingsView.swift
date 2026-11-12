@@ -12,7 +12,7 @@ struct AdvancedSettingsView: View {
         Form {
             Picker("Editor", selection: choice) {
                 ForEach(EditorBackendKind.allCases, id: \.self) { kind in
-                    Text(kind.isAvailable ? kind.title : "Native (coming soon)")
+                    Text(kind.isAvailable ? kind.title : "\(kind.title) (coming soon)")
                         .tag(kind)
                         .disabled(!kind.isAvailable)
                 }
