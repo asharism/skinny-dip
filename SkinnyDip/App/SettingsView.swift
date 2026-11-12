@@ -3,12 +3,14 @@ import SwiftUI
 import MarkdownCore
 
 /// The ⌘, window. General keeps the render toggles. Appearance picks themes and Zoom.
+/// Advanced picks the Editor Backend.
 struct SettingsView: View {
     @Environment(\.metrics) private var metrics
     @EnvironmentObject private var themes: ThemeStore
     @AppStorage(RenderSettings.demotesHeadings) private var demotesHeadings = RenderOptions.default.demotesHeadings
     @AppStorage(RenderSettings.bordersTables) private var bordersTables = RenderOptions.default.bordersTables
     @AppStorage(RenderSettings.newlinesAsBreaks) private var newlinesAsBreaks = RenderOptions.default.newlinesAsBreaks
+    @AppStorage(PreviewVisibility.inNewDocuments) private var previewInNewDocuments = true
     @AppStorage("themeMode") private var themeMode = ThemeSelection.matchSystem
     @AppStorage("themeFixed") private var themeFixed = ThemeSelection.defaultLight
     @AppStorage("themeLight") private var themeLight = ThemeSelection.defaultLight
@@ -21,6 +23,8 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             appearance
                 .tabItem { Label("Appearance", systemImage: "paintpalette") }
+            AdvancedSettingsView()
+                .tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
         }
         .frame(width: metrics.settingsWidth)
         .padding(metrics.settingsPadding)
@@ -36,6 +40,9 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
             Toggle("Newlines as line breaks", isOn: $newlinesAsBreaks)
             Text("Keeps “Thanks,⏎Hitesh” on two lines. Off joins lines as CommonMark does.")
+                .font(.caption).foregroundStyle(.secondary)
+            Toggle("Show Preview in new documents", isOn: $previewInNewDocuments)
+            Text("Off opens documents with just the Editor. ⇧⌘P shows or hides the Preview in the current Tab.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

@@ -28,7 +28,8 @@ struct ContentView: View {
     @State private var wordTask: Task<Void, Never>?
     @State private var titleTask: Task<Void, Never>?
     @State private var scratchTask: Task<Void, Never>?
-    @AppStorage("showPreview") private var showPreview = true
+    // Per Tab: seeded from Settings › General, toggled only in this Tab.
+    @State private var showPreview = PreviewVisibility.initial()
     @AppStorage("previewLeadingFraction") private var previewLeadingFraction: Double = 0.5
     @AppStorage("paneOrientation") private var paneOrientation = "sideBySide"
     @AppStorage("scrollSync") private var scrollSync = true
@@ -90,11 +91,11 @@ struct ContentView: View {
                     axis: stacked ? .vertical : .horizontal,
                     spacing: metrics.cardGap,
                     leadingVisible: zoomed != .preview,
-                    trailingVisible: showPreview && zoomed != .editor
+                    trailingVisible: showPreview && zoomed != .editor && !soakHidesPreview
                 ) {
                     editorCard
                 } trailing: {
-                    previewCard
+                    if soakHidesPreview { Color.clear } else { previewCard }
                 }
                 .padding(.horizontal, metrics.cardPadding)
                 .padding(.bottom, metrics.cardPadding)
@@ -116,7 +117,12 @@ struct ContentView: View {
             applyTitle(immediate: true)
             scheduleWords(immediate: true)
             refreshPreview()
-            editor.pendingHistory = ScratchRestore.history(forText: document.source, storedHistoryJSON: document.undoHistory)
+            editor.pendingHistory = ScratchHistory.restorable(
+                forText: document.source,
+                storedHistoryJSON: document.undoHistory,
+                storedBackend: document.undoHistoryBackend,
+                current: .current
+            )
             registerWindow()
         }
         .onChange(of: document.source) { _, newValue in
@@ -141,7 +147,8 @@ struct ContentView: View {
             applyTitle(immediate: true)
         }
         .onChange(of: window) { registerWindow() }
-        .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .togglePreview)) { note in
+            guard let window, note.object as? NSWindow === window else { return }
             showPreview.toggle()
         }
         .onReceive(NotificationCenter.default.publisher(for: .duplicateDocument)) { _ in
@@ -308,7 +315,7 @@ struct ContentView: View {
     }
 
     private var editorPane: some View {
-        EditorView(
+        EditorHost(
             text: $document.source,
             selection: $selection,
             canUndo: $canUndo,
@@ -432,6 +439,7 @@ struct ContentView: View {
     }
 
     private func refreshPreview() {
+        guard !soakHidesPreview else { return }
         previewState.update(source: document.source, options: renderOptions)
     }
 
@@ -507,11 +515,28 @@ struct ContentView: View {
         scratchTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard !Task.isCancelled else { return }
-            let history = await editor.exportState?()
+            let history = soakSkipsHistoryExport ? nil : await editor.exportState?()
             ScratchSession.shared.flush(id: id, history: history)
             clearEdited()
             tabs.refresh()
         }
+    }
+
+    /// Soak harness attribution switches (#62); always false outside Debug builds.
+    private var soakHidesPreview: Bool {
+        #if DEBUG
+        DebugSoak.hidesPreview
+        #else
+        false
+        #endif
+    }
+
+    private var soakSkipsHistoryExport: Bool {
+        #if DEBUG
+        DebugSoak.skipsHistoryExport
+        #else
+        false
+        #endif
     }
 
     private func registerWindow() {

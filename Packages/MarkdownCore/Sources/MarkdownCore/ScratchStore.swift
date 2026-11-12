@@ -1,7 +1,8 @@
 import Foundation
 
-/// Sidecar for a Scratch Document. `undoHistory` is CodeMirror JSON, carried
-/// untouched by the store (ADR-0007).
+/// Sidecar for a Scratch Document. `undoHistory` is the Editor Backend's own
+/// history, carried untouched by the store (ADR-0007); `undoHistoryBackend`
+/// names the backend that wrote it, and `nil` means CodeMirror (ADR-0010).
 public struct ScratchMeta: Codable, Equatable, Sendable {
     public var createdAt: Date
     public var updatedAt: Date
@@ -9,6 +10,7 @@ public struct ScratchMeta: Codable, Equatable, Sendable {
     public var windowIndex: Int
     public var tabIndex: Int
     public var undoHistory: String?
+    public var undoHistoryBackend: String?
 
     public init(
         createdAt: Date,
@@ -16,7 +18,8 @@ public struct ScratchMeta: Codable, Equatable, Sendable {
         closedAt: Date? = nil,
         windowIndex: Int,
         tabIndex: Int,
-        undoHistory: String? = nil
+        undoHistory: String? = nil,
+        undoHistoryBackend: String? = nil
     ) {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -24,6 +27,7 @@ public struct ScratchMeta: Codable, Equatable, Sendable {
         self.windowIndex = windowIndex
         self.tabIndex = tabIndex
         self.undoHistory = undoHistory
+        self.undoHistoryBackend = undoHistoryBackend
     }
 
     public static func recovered(now: Date) -> ScratchMeta {

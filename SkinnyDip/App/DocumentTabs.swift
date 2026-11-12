@@ -113,6 +113,12 @@ enum DocumentTabs {
         }
     }
 
+    /// The selected Tab of the front document Window: the target of per-Tab menu commands.
+    static func frontDocumentTab() -> NSWindow? {
+        guard let window = frontDocumentWindow() else { return nil }
+        return window.tabGroup?.selectedWindow ?? window
+    }
+
     static func hideNativeTabBar(_ window: NSWindow) {
         guard let group = window.tabGroup, group.windows.count > 1 else { return }
         guard let border = window.contentView?.superview else { return }

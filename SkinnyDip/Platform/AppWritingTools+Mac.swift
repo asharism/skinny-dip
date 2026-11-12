@@ -11,7 +11,7 @@ enum AppWritingTools {
 
     /// Context menu: the system Writing Tools submenu (Proofread, Rewrite, …).
     /// Falls back to WebKit's `_showWritingTools` when that submenu is unavailable.
-    static func ensureWritingTools(menu: NSMenu, target: EditorWebView) {
+    static func ensureWritingTools(menu: NSMenu, target: any EditorResponder) {
         if let existing = menu.items.first(where: { $0.identifier == skinyDipWritingToolsID }) {
             if let submenu = NSMenuItem.systemWritingToolsItem?.submenu?.copy() as? NSMenu {
                 existing.submenu = submenu

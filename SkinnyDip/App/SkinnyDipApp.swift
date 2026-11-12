@@ -36,6 +36,7 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        PreviewVisibility.migrate()
         DocumentTabs.install()
         NotificationCenter.default.addObserver(forName: NSApplication.didFinishRestoringWindowsNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -95,6 +96,7 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
         _ = AppUpdater.shared
         #if DEBUG
         DebugSnapshot.installIfRequested()
+        DebugSoak.installIfRequested()
         #endif
     }
 
