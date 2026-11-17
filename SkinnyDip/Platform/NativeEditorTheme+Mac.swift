@@ -49,8 +49,21 @@ struct NativeEditorTheme: Equatable {
         roles[role] ?? foreground
     }
 
+    /// Commit Mono, bundled under Resources/fonts (SIL OFL) and registered
+    /// through `ATSApplicationFontsPath`; SF Mono if it fails to load.
     var font: NSFont {
-        NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+        font(bold: false, italic: false)
+    }
+
+    /// The editor font with the traits the highlighter gives `**strong**`,
+    /// headings and `*emphasis*`. Every weight has the same advance width.
+    func font(bold: Bool, italic: Bool) -> NSFont {
+        let name = ["CommitMono-Regular", "CommitMono-Italic", "CommitMono-Bold", "CommitMono-BoldItalic"][
+            (bold ? 2 : 0) + (italic ? 1 : 0)
+        ]
+        if let font = NSFont(name: name, size: fontSize) { return font }
+        let mono = NSFont.monospacedSystemFont(ofSize: fontSize, weight: bold ? .bold : .regular)
+        return italic ? NSFontManager.shared.convert(mono, toHaveTrait: .italicFontMask) : mono
     }
 
     /// Content padding: 8 above and 16 below (times Zoom),
@@ -59,10 +72,10 @@ struct NativeEditorTheme: Equatable {
         (inlinePadding, 8 * zoom, 16 * zoom)
     }
 
-    /// Line height 1.65.
+    /// Line height 1.8, matching the Preview.
     var paragraphStyle: NSParagraphStyle {
         let style = NSMutableParagraphStyle()
-        let height = (fontSize * 1.65).rounded()
+        let height = (fontSize * 1.8).rounded()
         style.minimumLineHeight = height
         style.maximumLineHeight = height
         return style

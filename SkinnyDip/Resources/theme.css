@@ -21,7 +21,7 @@ html {
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: calc(13px * var(--zoom));
-  line-height: 1.65;
+  line-height: 1.8;
   color: var(--fg);
   background: transparent;
 }
