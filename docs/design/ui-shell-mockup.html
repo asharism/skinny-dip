@@ -218,7 +218,7 @@ function render() {
       ${showPv ? `<section class="card" aria-label="Preview" style="${card}">
         <div class="head">${svg('eye', 16, t.accent)}<span class="name">Preview</span><div style="flex:1"></div>
           <div class="copy" style="background:${S.copied ? t.code : t.accent};color:${t.onAccent};opacity:${empty ? .45 : 1}">
-            <button data-act="copy" ${empty ? 'disabled' : ''} style="padding:0 10px;font-weight:600">${svg(S.copied ? 'check' : 'copy', 14, 'currentColor', S.copied ? 2 : 1.6)}<span>${copyLabel}</span><span style="opacity:.7;font-weight:500">⌘C</span></button>
+            <button data-act="copy" ${empty ? 'disabled' : ''} style="padding:0 10px;font-weight:600">${svg(S.copied ? 'check' : 'copy', 14, 'currentColor', S.copied ? 2 : 1.6)}<span>${copyLabel}</span><span style="opacity:.7;font-weight:500">⇧⌘C</span></button>
             <button data-act="menu" aria-label="More copy formats" style="width:24px;justify-content:center;border-left:1px solid ${t.dark ? 'rgba(0,0,0,.25)' : 'rgba(255,255,255,.35)'}">${svg('chev', 12, 'currentColor', 1.8)}</button>
           </div>
           <button class="ibtn" data-act="sync" aria-pressed="${S.sync}" aria-label="Scroll sync" title="Scroll sync ${S.sync ? 'on' : 'off'}" style="background:${S.sync ? t.strip : 'transparent'};color:${S.sync ? t.accent : t.muted}">${svg('link', 15)}</button>
@@ -226,7 +226,7 @@ function render() {
           <button class="ibtn" data-act="hide" aria-label="Hide Preview (⇧⌘P)" title="Hide Preview (⇧⌘P)" style="color:${t.muted}">${svg('x', 13, 'currentColor', 1.7)}</button>
         </div>
         ${S.menu ? `<div class="menu" style="background:${t.menu};box-shadow:0 0 0 1px ${t.border},0 12px 32px rgba(0,0,0,.22)">
-          ${[['rich text', 'Copy as Rich Text', '⌘C'], ['Markdown', 'Copy as Markdown', '⇧⌘C'], ['HTML', 'Copy as HTML', '⌥⌘C']].map(([k, l, key]) =>
+          ${[['rich text', 'Copy as Rich Text', '⇧⌘C'], ['Markdown', 'Copy as Markdown', ''], ['HTML', 'Copy as HTML', '⌥⌘C']].map(([k, l, key]) =>
             `<button data-copy="${k}" style="color:${t.fg}"><span>${l}</span><span style="color:${t.muted}">${key}</span></button>`).join('')}
         </div>` : ''}
         <div class="body-pv">${pvBody}</div>
