@@ -58,13 +58,13 @@ struct NativeEditorGutter {
     var containerInsetWidth: CGFloat { textOriginX }
 
     var lineHeight: CGFloat {
-        theme.paragraphStyle.minimumLineHeight
+        theme.lineHeight
     }
 
     func attributes(color: NSColor) -> [NSAttributedString.Key: Any] {
         let style = (theme.paragraphStyle.mutableCopy() as? NSMutableParagraphStyle) ?? NSMutableParagraphStyle()
         style.alignment = .right
-        return [.font: theme.font, .foregroundColor: color, .paragraphStyle: style]
+        return [.font: theme.font, .foregroundColor: color, .paragraphStyle: style, .baselineOffset: theme.baselineOffset]
     }
 }
 

@@ -73,9 +73,14 @@ struct NativeEditorTheme: Equatable {
     }
 
     /// Line height 1.8, matching the Preview.
+    var lineHeight: CGFloat { (fontSize * 1.8).rounded() }
+
     var paragraphStyle: NSParagraphStyle {
         let style = NSMutableParagraphStyle()
-        let height = (fontSize * 1.8).rounded()
+        // With a positive baseline offset, TextKit 2 excludes the rounded
+        // descent from the line fragment. Include it in the paragraph's
+        // constraint so the resulting visual row still has `lineHeight`.
+        let height = lineHeight + (-font.descender).rounded()
         style.minimumLineHeight = height
         style.maximumLineHeight = height
         return style
@@ -86,7 +91,15 @@ struct NativeEditorTheme: Equatable {
             .font: font,
             .foregroundColor: foreground,
             .paragraphStyle: paragraphStyle,
+            .baselineOffset: baselineOffset,
         ]
+    }
+
+    /// With the descent included in the paragraph constraint, AppKit's glyph
+    /// origin sits at the visual row's bottom. Raise the run so the font's
+    /// ascent/descent are centered within that row.
+    var baselineOffset: CGFloat {
+        (lineHeight - font.ascender - font.descender) / 2
     }
 
     /// `#rrggbb`, `#rgb` or `rgba(r, g, b, a)`, as `RGBA.css` writes them.
