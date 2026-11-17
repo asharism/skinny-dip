@@ -99,6 +99,78 @@ struct NativeEditorTests {
         #expect(harness.textView.copySource().selection == nil)
     }
 
+    /// ADR-0011: ⌘C and ⌘X write the selected Markdown as plain text only.
+    @Test func copyWritesPlainTextOnly() {
+        let pasteboard = NSPasteboard(name: .init("SkinnyDipTests.native.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        let harness = NativeEditorHarness(text: "one **two** three")
+        defer { harness.teardown() }
+        harness.textView.pasteboard = pasteboard
+
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 7))
+        harness.textView.copy(nil)
+        #expect(pasteboard.onlyFlavors == [.string])
+        #expect(pasteboard.string(forType: .string) == "**two**")
+        #expect(harness.textView.string == "one **two** three")
+    }
+
+    @Test func copyWithNoSelectionDoesNothingAndIsDisabled() {
+        let pasteboard = NSPasteboard(name: .init("SkinnyDipTests.native.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        let harness = NativeEditorHarness(text: "one **two** three")
+        defer { harness.teardown() }
+        harness.textView.pasteboard = pasteboard
+        MacClipboard(pasteboard: pasteboard).write(plainText: "before")
+
+        harness.textView.setSelectedRange(NSRange(location: 3, length: 0))
+        harness.textView.copy(nil)
+        #expect(pasteboard.string(forType: .string) == "before")
+
+        let copyItem = NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        #expect(!harness.textView.validateUserInterfaceItem(copyItem))
+        harness.textView.setSelectedRange(NSRange(location: 0, length: 3))
+        #expect(harness.textView.validateUserInterfaceItem(copyItem))
+    }
+
+    @Test func cutWritesPlainTextAndUndoesInOneStep() {
+        let pasteboard = NSPasteboard(name: .init("SkinnyDipTests.native.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        let text = "first\nsecond **line**\nthird"
+        let harness = NativeEditorHarness(text: text)
+        defer { harness.teardown() }
+        harness.textView.pasteboard = pasteboard
+
+        harness.textView.setSelectedRange((text as NSString).range(of: "second **line**\n"))
+        harness.event { harness.textView.cut(nil) }
+        #expect(harness.textView.string == "first\nthird")
+        #expect(pasteboard.onlyFlavors == [.string])
+        #expect(pasteboard.string(forType: .string) == "second **line**\n")
+
+        // Pasting it back arrives unchanged; one undo removes the paste, one more restores the cut.
+        harness.event { harness.textView.paste(nil) }
+        #expect(harness.textView.string == text)
+        harness.textView.undoManager?.undo()
+        #expect(harness.textView.string == "first\nthird")
+        harness.textView.undoManager?.undo()
+        #expect(harness.textView.string == text)
+    }
+
+    /// The context menu's Copy is the plain Copy, followed by Copy as Rich Text and Copy as HTML.
+    @Test func contextMenuOffersPlainCopyRichTextAndHTML() throws {
+        let harness = NativeEditorHarness(text: "one **two** three")
+        defer { harness.teardown() }
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 7))
+        let event = try #require(NSEvent.mouseEvent(
+            with: .rightMouseDown, location: NSPoint(x: 20, y: 20), modifierFlags: [], timestamp: 0,
+            windowNumber: harness.textView.window?.windowNumber ?? 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+        ))
+        let menu = try #require(harness.textView.menu(for: event))
+        let titles = menu.items.map(\.title)
+        let copyIndex = try #require(titles.firstIndex(of: "Copy"))
+        #expect(Array(titles[copyIndex...].prefix(3)) == ["Copy", "Copy as Rich Text", "Copy as HTML"])
+        #expect(!titles.contains("Copy as Markdown"))
+    }
+
     @Test func viewportReportsTopLineAfterScroll() async throws {
         let text = (1...300).map { "Line \($0)" }.joined(separator: "\n")
         let harness = NativeEditorHarness(text: text)
@@ -143,6 +215,208 @@ struct NativeEditorTests {
         #expect(textView.writingToolsBehavior == .complete)
         #expect(textView.textLayoutManager != nil)
     }
+
+    // MARK: Line numbers (#76)
+
+    @Test func lineNumberGutterKeepsTextKit2() async throws {
+        var fellBack: [ObjectIdentifier] = []
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSTextView.willSwitchToNSLayoutManagerNotification, object: nil, queue: nil
+        ) { note in
+            if let object = note.object as AnyObject? { fellBack.append(ObjectIdentifier(object)) }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        let text = (1...150).map { "Line \($0) " + String(repeating: "wrap ", count: $0 % 7 == 0 ? 40 : 1) }.joined(separator: "\n")
+        let harness = NativeEditorHarness(text: text)
+        defer { harness.teardown() }
+        let textView: NativeEditorTextView = harness.textView
+
+        // Draw, type, scroll, zoom and toggle: every path the gutter takes.
+        harness.display()
+        harness.event { textView.insertText("\nnew", replacementRange: NSRange(location: 0, length: 0)) }
+        harness.display()
+        harness.coordinator.scrollToLine(120)
+        harness.display()
+        harness.themeVars["--editor-font-size"] = "16.0px"
+        harness.themeVars["--zoom"] = "1.2"
+        harness.update()
+        harness.display()
+        harness.model.showsLineNumbers = false
+        harness.update()
+        harness.display()
+        harness.model.showsLineNumbers = true
+        harness.update()
+        harness.display()
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(textView.textLayoutManager != nil)
+        #expect(!fellBack.contains(ObjectIdentifier(textView)))
+        #expect(fellBack.isEmpty)
+    }
+
+    @Test func gutterWidthGrowsAtHundredLines() {
+        let ninetyNine = (1...99).map { "\($0)" }.joined(separator: "\n")
+        let harness = NativeEditorHarness(text: ninetyNine)
+        defer { harness.teardown() }
+        let narrow = harness.coordinator.gutterWidth
+        let narrowOrigin = harness.textView.textContainerOrigin.x
+        #expect(narrow > 0)
+
+        harness.event { harness.textView.insertText("\n100", replacementRange: NSRange(location: (ninetyNine as NSString).length, length: 0)) }
+        #expect(harness.coordinator.gutterWidth > narrow)
+        #expect(harness.textView.textContainerOrigin.x > narrowOrigin)
+
+        // Back under 100 lines, it narrows again.
+        harness.event { harness.textView.insertText("", replacementRange: NSRange(location: (ninetyNine as NSString).length, length: 4)) }
+        #expect(harness.textView.string == ninetyNine)
+        #expect(harness.coordinator.gutterWidth == narrow)
+    }
+
+    @Test func gutterNumbersLogicalLinesOnly() {
+        let long = String(repeating: "wrapping words ", count: 40)
+        let harness = NativeEditorHarness(text: "short\n\(long)\nend\n")
+        defer { harness.teardown() }
+        let textView: NativeEditorTextView = harness.textView
+        let rows = harness.coordinator.gutterRows(in: textView.bounds, textView: textView)
+        // The wrapped paragraph gets one number, and the empty last line is numbered.
+        #expect(rows.map(\.line) == [1, 2, 3, 4])
+        let lineHeight = NativeEditorTheme(vars: harness.themeVars).paragraphStyle.minimumLineHeight
+        #expect(rows.allSatisfy { abs($0.rect.height - lineHeight) < 1 })
+        #expect(rows[2].rect.minY - rows[1].rect.minY > lineHeight * 3)
+        #expect(rows[3].rect.minY > rows[2].rect.minY)
+
+        let empty = NativeEditorHarness(text: "")
+        defer { empty.teardown() }
+        #expect(empty.coordinator.gutterRows(in: empty.textView.bounds, textView: empty.textView).map(\.line) == [1])
+    }
+
+    @Test func gutterMatchesLinesFarDown() async throws {
+        let text = (1...2000).map { "Line \($0)" }.joined(separator: "\n")
+        let harness = NativeEditorHarness(text: text)
+        defer { harness.teardown() }
+        let textView: NativeEditorTextView = harness.textView
+        harness.coordinator.scrollToLine(1500)
+        let rows = harness.coordinator.gutterRows(in: textView.visibleRect, textView: textView)
+        let first = try #require(rows.first { $0.rect.minY >= textView.visibleRect.minY - 1 })
+        #expect(first.line == 1500)
+        // One number per row, consecutive, with no gaps or repeats.
+        let numbers = rows.map(\.line)
+        #expect(numbers == Array(numbers[0]..<(numbers[0] + numbers.count)))
+        // Scroll sync still reports the same top line, with the gutter on and off.
+        try await harness.waitForController { $0.viewport.topLine == 1500 }
+        #expect(harness.controller.viewport.topLine == 1500)
+        harness.model.showsLineNumbers = false
+        harness.update()
+        harness.coordinator.scrollToLine(1200)
+        try await harness.waitForController { $0.viewport.topLine == 1200 }
+        #expect(harness.controller.viewport.topLine == 1200)
+    }
+
+    @Test func toggleHidesGutter() {
+        let harness = NativeEditorHarness(text: "one\ntwo\nthree")
+        defer { harness.teardown() }
+        let theme = NativeEditorTheme(vars: harness.themeVars)
+        #expect(harness.coordinator.gutterWidth > 0)
+        #expect(harness.textView.textContainerOrigin.x > theme.inlinePadding)
+        // A separate column (strip tint, border2 hairline), then the gap, then the text.
+        let gutter = harness.coordinator.gutter
+        #expect(gutter.columnWidth > 0)
+        #expect(abs(harness.textView.textContainerOrigin.x - gutter.columnWidth - 8) < 0.01, "\(harness.textView.textContainerOrigin.x) \(gutter.columnWidth)")
+        #expect(gutter.numberRight < gutter.columnWidth - NativeEditorGutter.hairline)
+        #expect(theme.gutterBackground == NativeEditorTheme.color(css: harness.themeVars["--gutter-bg"] ?? ""))
+        #expect(theme.gutterBorder == NativeEditorTheme.color(css: harness.themeVars["--gutter-border"] ?? ""))
+
+        harness.model.showsLineNumbers = false
+        harness.update()
+        #expect(harness.coordinator.gutterWidth == 0)
+        #expect(harness.textView.textContainerOrigin == NSPoint(x: theme.inlinePadding, y: theme.insets.top))
+
+        harness.model.showsLineNumbers = true
+        harness.update()
+        #expect(harness.coordinator.gutterWidth > 0)
+    }
+}
+
+// MARK: Current-line highlight (#77)
+
+@MainActor
+struct NativeEditorCurrentLineTests {
+    @Test func currentLineRectCoversWrappedParagraph() throws {
+        let long = String(repeating: "wrapping words ", count: 40)
+        let harness = NativeEditorHarness(text: "short\n\(long)\nend")
+        defer { harness.teardown() }
+        let textView: NativeEditorTextView = harness.textView
+        let layoutManager = try #require(textView.textLayoutManager)
+        let contentManager = try #require(layoutManager.textContentManager)
+        let paragraphStart = 6
+        let location = try #require(contentManager.location(layoutManager.documentRange.location, offsetBy: paragraphStart))
+        layoutManager.ensureLayout(for: layoutManager.documentRange)
+        let fragment = try #require(layoutManager.textLayoutFragment(for: location))
+        #expect(fragment.textLineFragments.count >= 3)
+        let third = fragment.textLineFragments[2]
+
+        textView.setSelectedRange(NSRange(location: paragraphStart + third.characterRange.location + 2, length: 0))
+        let rect = try #require(harness.coordinator.currentLineRect())
+        #expect(abs(rect.height - fragment.layoutFragmentFrame.height) < 0.5)
+        #expect(abs(rect.minY - (fragment.layoutFragmentFrame.minY + textView.textContainerOrigin.y)) < 0.5)
+        // One band from the left edge to the right edge of the text view.
+        #expect(rect.minX == 0)
+        #expect(rect.width == textView.bounds.width)
+
+        // A one-row line, and the last line.
+        textView.setSelectedRange(NSRange(location: 2, length: 0))
+        let short = try #require(harness.coordinator.currentLineRect())
+        #expect(short.height < rect.height / 2)
+        textView.setSelectedRange(NSRange(location: (textView.string as NSString).length, length: 0))
+        #expect(harness.coordinator.currentLineRect()?.minY ?? 0 > rect.maxY - 1)
+    }
+
+    @Test func currentLineOnEmptyLastLine() throws {
+        let harness = NativeEditorHarness(text: "a\nb\n")
+        defer { harness.teardown() }
+        harness.textView.setSelectedRange(NSRange(location: 2, length: 0))
+        let second = try #require(harness.coordinator.currentLineRect())
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 0))
+        let last = try #require(harness.coordinator.currentLineRect())
+        #expect(abs(last.minY - second.maxY) < 1)
+        #expect(abs(last.height - second.height) < 1)
+
+        let empty = NativeEditorHarness(text: "")
+        defer { empty.teardown() }
+        let rect = try #require(empty.coordinator.currentLineRect())
+        #expect(abs(rect.height - second.height) < 1)
+    }
+
+    @Test func noHighlightWithSelection() {
+        let harness = NativeEditorHarness(text: "one\ntwo\nthree")
+        defer { harness.teardown() }
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 0))
+        #expect(harness.coordinator.currentLineRect() != nil)
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 2))
+        #expect(harness.coordinator.currentLineRect() == nil)
+        harness.textView.setSelectedRange(NSRange(location: 5, length: 0))
+        #expect(harness.coordinator.currentLineRect() != nil)
+    }
+
+    @Test func highlightDoesNotEditOrUndo() async throws {
+        let harness = NativeEditorHarness(text: "# Title\n\nBody text\nMore")
+        defer { harness.teardown() }
+        let storage = try #require(harness.textView.textStorage)
+        let before = NSAttributedString(attributedString: storage)
+        for offset in [0, 3, 9, 14, 20, 2] {
+            harness.textView.setSelectedRange(NSRange(location: offset, length: 0))
+            harness.display()
+        }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        #expect(harness.textView.undoManager?.canUndo == false)
+        #expect(!harness.model.canUndo)
+        #expect(harness.model.textWrites == 0)
+        // No background attributes: the band is drawn, never stored in the text.
+        #expect(storage.isEqual(to: before))
+        storage.enumerateAttribute(.backgroundColor, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
+            #expect(value == nil)
+        }
+    }
 }
 
 @MainActor
@@ -152,6 +426,7 @@ final class NativeEditorModel {
     var canUndo = false
     var canRedo = false
     var hasEditorSelection = false
+    var showsLineNumbers = true
     var textWrites = 0
 
     init(text: String) {
@@ -165,7 +440,7 @@ final class NativeEditorModel {
 final class NativeEditorHarness {
     let model: NativeEditorModel
     let controller = EditorController()
-    let themeVars: [String: String]
+    var themeVars: [String: String]
     private(set) var coordinator: NativeEditorView.Coordinator!
     private(set) var textView: NativeEditorTextView!
     private var window: NSWindow?
@@ -209,8 +484,16 @@ final class NativeEditorHarness {
             hasEditorSelection: Binding(get: { model.hasEditorSelection }, set: { model.hasEditorSelection = $0 }),
             documentID: UUID(),
             themeVars: themeVars,
-            controller: controller
+            controller: controller,
+            showsLineNumbers: model.showsLineNumbers
         )
+    }
+
+    /// Draws the window now, so the gutter's drawing code runs.
+    func display() {
+        window?.layoutIfNeeded()
+        window?.contentView?.needsDisplay = true
+        window?.displayIfNeeded()
     }
 
     /// AppKit groups undo by event. Hosted tests get no events, so each

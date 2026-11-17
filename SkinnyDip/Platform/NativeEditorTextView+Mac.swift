@@ -74,50 +74,58 @@ final class NativeEditorTextView: NSTextView, EditorResponder {
 
     private var documentID: UUID? { editorCoordinator?.parent.documentID }
 
+    /// ⌘C (ADR-0011): the selected Markdown as plain text only; nothing with no selection.
     @objc override func copy(_ sender: Any?) {
-        let source = copySource()
-        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection, documentID: documentID)
+        write(.plain)
     }
 
+    /// ⌘X follows ⌘C, then deletes the selection as one undo step.
     @objc override func cut(_ sender: Any?) {
-        guard selectedRange().length > 0 else { return }
-        copy(sender)
+        guard selectedRange().length > 0, write(.plain) else { return }
+        breakUndoCoalescing()
         delete(sender)
+        breakUndoCoalescing()
     }
 
-    @objc func skinnyDipCopyMarkdown(_ sender: Any?) {
-        let source = copySource()
-        CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection, documentID: documentID)
+    @objc func skinnyDipCopyRichText(_ sender: Any?) {
+        write(.richText)
     }
 
     @objc func skinnyDipCopyHTML(_ sender: Any?) {
-        let source = copySource()
-        CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection, documentID: documentID)
+        write(.html)
     }
 
-    /// Drags and Services read the selection through here: the same Bare HTML
-    /// plus Markdown as ⌘C, never AppKit's RTF.
+    @discardableResult
+    private func write(_ command: CopyCommand) -> Bool {
+        let source = copySource()
+        if command == .plain, source.selection == nil { return false }
+        CopyWriter.write(command, markdown: source.markdown, selection: source.selection, documentID: documentID, clipboard: MacClipboard(pasteboard: pasteboard))
+        return true
+    }
+
+    /// Drags and Services read the selection through here: the selected Markdown
+    /// as plain text, like ⌘C, never AppKit's RTF.
     override func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
         let source = copySource()
-        let payload = CopyWriter.richTextPayload(for: CopySource(markdown: source.markdown, selection: source.selection))
-        MacClipboard(pasteboard: pboard).write(payload)
+        guard let selection = source.selection else { return false }
+        MacClipboard(pasteboard: pboard).write(plainText: CopyAsMarkdown.text(for: source.markdown, selection: selection))
         return true
     }
 
     override var writablePasteboardTypes: [NSPasteboard.PasteboardType] {
-        [.html, .string]
+        [.string]
     }
 
     // MARK: Menus
 
-    private var canCopy: Bool { selectedRange().length > 0 || !string.isEmpty }
+    private var canCopyRichText: Bool { selectedRange().length > 0 || !string.isEmpty }
 
     override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
         switch item.action {
-        case #selector(cut(_:)):
+        case #selector(cut(_:)), #selector(copy(_:)):
             return selectedRange().length > 0
-        case #selector(copy(_:)), #selector(skinnyDipCopyMarkdown(_:)), #selector(skinnyDipCopyHTML(_:)):
-            return canCopy
+        case #selector(skinnyDipCopyRichText(_:)), #selector(skinnyDipCopyHTML(_:)):
+            return canCopyRichText
         case #selector(paste(_:)), #selector(pasteAsPlainText(_:)), #selector(pasteAsRichText(_:)):
             return pasteboard.canPasteFromPasteboard
         case EditorResponders.undoSelector:
@@ -136,18 +144,19 @@ final class NativeEditorTextView: NSTextView, EditorResponder {
         return menu
     }
 
-    /// The context menu's Copy becomes the three copy commands, as in the CodeMirror backend.
+    /// The context menu's Copy stays the plain Copy, followed by Copy as Rich Text
+    /// and Copy as HTML, as in the CodeMirror backend (ADR-0011).
     private func customizeCopyMenu(_ menu: NSMenu) {
-        guard !menu.items.contains(where: { $0.action == #selector(skinnyDipCopyMarkdown(_:)) }),
+        guard !menu.items.contains(where: { $0.action == #selector(skinnyDipCopyRichText(_:)) }),
               let copyIndex = menu.items.firstIndex(where: { $0.action == #selector(copy(_:)) })
         else { return }
         let copyItem = menu.items[copyIndex]
-        copyItem.title = "Copy as Rich Text"
+        copyItem.title = "Copy"
         copyItem.target = self
 
-        let markdownItem = NSMenuItem(title: "Copy as Markdown", action: #selector(skinnyDipCopyMarkdown(_:)), keyEquivalent: "")
-        markdownItem.target = self
-        menu.insertItem(markdownItem, at: copyIndex + 1)
+        let richItem = NSMenuItem(title: "Copy as Rich Text", action: #selector(skinnyDipCopyRichText(_:)), keyEquivalent: "")
+        richItem.target = self
+        menu.insertItem(richItem, at: copyIndex + 1)
 
         let htmlItem = NSMenuItem(title: "Copy as HTML", action: #selector(skinnyDipCopyHTML(_:)), keyEquivalent: "")
         htmlItem.target = self

@@ -11,5 +11,20 @@ enum AppKeyboardShortcuts {
         guard event.charactersIgnoringModifiers?.lowercased() == "q" else { return false }
         return NSApp.sendAction(#selector(NSApplication.terminate(_:)), to: NSApp, from: NSApp)
     }
+
+    /// The web views (Preview, legacy CodeMirror editor) claim ⌘C themselves so
+    /// WebKit's styled copy never runs: ⌘C plain, ⌘⇧C rich text, ⌥⌘C HTML (ADR-0011).
+    static func copyCommand(for event: NSEvent) -> CopyCommand? {
+        guard event.type == .keyDown,
+              event.charactersIgnoringModifiers?.lowercased() == "c"
+        else { return nil }
+        let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        switch flags {
+        case .command: return .plain
+        case [.command, .shift]: return .richText
+        case [.command, .option]: return .html
+        default: return nil
+        }
+    }
 }
 #endif

@@ -3,18 +3,19 @@ import MarkdownCore
 
 /// Which Editor Backend runs the Editor Card (ADR-0010). Picked in Settings ›
 /// Advanced and read once at launch: the app never switches while running.
+/// Native won the trial (ADR-0010 Outcome); CodeMirror is frozen legacy until 0.3.0.
 enum EditorBackendKind: String, CaseIterable, Sendable {
-    case codeMirror
     case native
+    case codeMirror
 
     static let defaultsKey = "editorBackend"
 
     /// The backend for this run, fixed at first use.
     static let current: EditorBackendKind = stored(in: .standard).availableOrDefault
 
-    /// A missing or unknown value means CodeMirror.
+    /// A missing or unknown value means native.
     static func stored(in defaults: UserDefaults) -> EditorBackendKind {
-        defaults.string(forKey: defaultsKey).flatMap(EditorBackendKind.init(rawValue:)) ?? .codeMirror
+        defaults.string(forKey: defaultsKey).flatMap(EditorBackendKind.init(rawValue:)) ?? .native
     }
 
     func store(in defaults: UserDefaults) {
@@ -23,15 +24,15 @@ enum EditorBackendKind: String, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .codeMirror: "CodeMirror"
-        case .native: "Native (NSTextView)"
+        case .native: "Native"
+        case .codeMirror: "CodeMirror (legacy)"
         }
     }
 
     /// Every backend can be picked. Kept so a backend can be listed before it lands.
     var isAvailable: Bool { true }
 
-    private var availableOrDefault: EditorBackendKind { isAvailable ? self : .codeMirror }
+    private var availableOrDefault: EditorBackendKind { isAvailable ? self : .native }
 }
 
 /// Scratch Document undo history carries the tag of the backend that wrote it.

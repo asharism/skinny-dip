@@ -77,6 +77,7 @@ struct DocumentCommands: Commands {
 struct ViewCommands: Commands {
     @AppStorage("uiZoom") private var uiZoom = 1.0
     @AppStorage("scrollSync") private var scrollSync = true
+    @AppStorage(EditorSettings.showsLineNumbers) private var showsLineNumbers = true
     @AppStorage("themeMode") private var themeMode = ThemeSelection.matchSystem
     @AppStorage("themeFixed") private var themeFixed = ThemeSelection.defaultLight
     @ObservedObject private var themes = ThemeStore()
@@ -99,6 +100,7 @@ struct ViewCommands: Commands {
                 .labelsHidden()
             }
             Toggle("Scroll Sync", isOn: $scrollSync)
+            lineNumbersItem
             Divider()
             Button("Zoom In") { uiZoom = ZoomLevel(uiZoom).next().value }
                 .keyboardShortcut("+", modifiers: .command)
@@ -109,6 +111,17 @@ struct ViewCommands: Commands {
             Button("Actual Size") { uiZoom = ZoomLevel.reset().value }
                 .keyboardShortcut("0", modifiers: .command)
                 .disabled(ZoomLevel(uiZoom).value == 1)
+        }
+    }
+
+    /// The gutter is native-editor only (ADR-0010 Outcome): CodeMirror shows it disabled.
+    @ViewBuilder private var lineNumbersItem: some View {
+        if EditorBackendKind.current == .native {
+            Button(showsLineNumbers ? "Hide Line Numbers" : "Show Line Numbers") { showsLineNumbers.toggle() }
+                .keyboardShortcut("l", modifiers: [.command, .option])
+        } else {
+            Button("Line Numbers (Native editor only)") {}
+                .disabled(true)
         }
     }
 

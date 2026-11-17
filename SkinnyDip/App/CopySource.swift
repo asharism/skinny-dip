@@ -5,7 +5,7 @@ import SwiftUI
 /// the commands; whichever editor replaces the placeholder only has to publish one.
 struct CopySource {
     var markdown: String
-    /// `nil` or empty copies the whole document.
+    /// `nil` or empty: ⌘⇧C and ⌥⌘C copy the whole document, ⌘C copies nothing.
     var selection: Range<String.Index>?
     /// Which window should show the copy confirmation. Nil stays silent.
     var documentID: UUID?
@@ -17,11 +17,24 @@ struct EditorHistoryMenuState {
     var canRedo: Bool
 }
 
-/// Cut/copy/paste availability for the Edit menu when the CodeMirror editor is frontmost.
+/// Cut/copy/paste availability for the Edit menu when a document is frontmost (ADR-0011).
 struct EditorPasteboardMenuState {
+    /// ⌘X: an editor selection, and the Preview doesn't have focus.
     var canCut: Bool
+    /// ⌘C: a non-empty selection in whichever Card has focus.
     var canCopy: Bool
+    /// ⌘⇧C and ⌥⌘C: a selection, or else a non-empty document to copy whole.
+    var canCopyRichText: Bool
     var canPaste: Bool
+
+    /// `previewSelection` is nil while the Preview doesn't have focus, otherwise
+    /// whether the Preview has a non-empty selection.
+    init(editorHasSelection: Bool, documentIsEmpty: Bool, previewSelection: Bool?, canPaste: Bool) {
+        canCut = previewSelection == nil && editorHasSelection
+        canCopy = previewSelection ?? editorHasSelection
+        canCopyRichText = canCopy || !documentIsEmpty
+        self.canPaste = canPaste
+    }
 }
 
 extension FocusedValues {

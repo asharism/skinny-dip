@@ -17,6 +17,10 @@ struct AdvancedSettingsView: View {
                         .disabled(!kind.isAvailable)
                 }
             }
+            if chosen == .codeMirror {
+                Text(Self.legacyNote)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Text(EditorBackendSwitch.warning)
                 .font(.caption).foregroundStyle(.secondary)
             if relaunchFailed {
@@ -39,6 +43,8 @@ struct AdvancedSettingsView: View {
             Text(EditorBackendSwitch.warning)
         }
     }
+
+    static let legacyNote = "CodeMirror gets no new features and will be removed in Skinny 0.3.0."
 
     /// The picker never moves on its own: picking asks first, and Cancel leaves it where it was.
     private var choice: Binding<EditorBackendKind> {

@@ -360,12 +360,14 @@ final class EditorWebView: WKWebView, EditorResponder {
         }
     }
 
+    /// ⌘C (ADR-0011): the selected Markdown as plain text only; nothing with no selection.
     @objc func copy(_ sender: Any?) {
-        writeRichTextToPasteboard()
+        write(.plain)
     }
 
+    /// ⌘X follows ⌘C, then CodeMirror deletes the selection.
     @objc func cut(_ sender: Any?) {
-        writeRichTextToPasteboard()
+        guard editorCanCut, write(.plain) else { return }
         Task { @MainActor in
             _ = try? await callAsyncJavaScript("return editorCut()", contentWorld: .page)
         }
@@ -423,20 +425,17 @@ final class EditorWebView: WKWebView, EditorResponder {
             keyDown(with: event)
             return true
         }
-        guard event.type == .keyDown, event.modifierFlags.contains(.command),
+        // Only the focused editor answers ⌘C; with the Preview focused, its copy runs.
+        guard (window?.firstResponder as? NSView)?.isDescendant(of: self) == true,
+              event.type == .keyDown, event.modifierFlags.contains(.command),
               event.charactersIgnoringModifiers?.lowercased() == "c"
         else {
             return super.performKeyEquivalent(with: event)
         }
-        if flags.contains(.shift) {
-            writeMarkdownToPasteboard()
-            return true
+        // Any other ⌘…C is swallowed so WebKit's styled copy never runs.
+        if let command = AppKeyboardShortcuts.copyCommand(for: event) {
+            write(command)
         }
-        if flags.contains(.option) {
-            writeHTMLToPasteboard()
-            return true
-        }
-        copy(nil)
         return true
     }
 
@@ -455,7 +454,11 @@ final class EditorWebView: WKWebView, EditorResponder {
             (item as? NSMenuItem)?.isEnabled = enabled
             return enabled
         case #selector(copy(_:)):
-            let enabled = editorCanCopy
+            let enabled = editorCanCut
+            (item as? NSMenuItem)?.isEnabled = enabled
+            return enabled
+        case #selector(skinnyDipCopyRichText(_:)), #selector(skinnyDipCopyHTML(_:)):
+            let enabled = editorCanCopyRichText
             (item as? NSMenuItem)?.isEnabled = enabled
             return enabled
         case #selector(paste(_:)):
@@ -473,7 +476,7 @@ final class EditorWebView: WKWebView, EditorResponder {
         return coordinator.parent.hasEditorSelection
     }
 
-    private var editorCanCopy: Bool {
+    private var editorCanCopyRichText: Bool {
         guard let coordinator = editorCoordinator else { return false }
         let markdown = coordinator.lastEditorText ?? coordinator.parent.text
         return coordinator.parent.hasEditorSelection || !markdown.isEmpty
@@ -482,10 +485,10 @@ final class EditorWebView: WKWebView, EditorResponder {
     private func validateContextMenuPasteboardItems(_ menu: NSMenu) {
         for item in menu.items {
             switch item.action {
-            case #selector(cut(_:)):
+            case #selector(cut(_:)), #selector(copy(_:)), #selector(NSText.copy(_:)):
                 item.isEnabled = editorCanCut
-            case #selector(copy(_:)), #selector(NSText.copy(_:)):
-                item.isEnabled = editorCanCopy
+            case #selector(skinnyDipCopyRichText(_:)), #selector(skinnyDipCopyHTML(_:)):
+                item.isEnabled = editorCanCopyRichText
             case #selector(paste(_:)):
                 item.isEnabled = pasteboard.canPasteFromPasteboard
             default:
@@ -502,12 +505,12 @@ final class EditorWebView: WKWebView, EditorResponder {
         onRedo?()
     }
 
-    @objc func skinyDipCopyMarkdown(_ sender: Any?) {
-        writeMarkdownToPasteboard()
+    @objc func skinnyDipCopyRichText(_ sender: Any?) {
+        write(.richText)
     }
 
-    @objc func skinyDipCopyHTML(_ sender: Any?) {
-        writeHTMLToPasteboard()
+    @objc func skinnyDipCopyHTML(_ sender: Any?) {
+        write(.html)
     }
 
     private func copySource() -> (markdown: String, selection: Range<String.Index>?) {
@@ -516,39 +519,41 @@ final class EditorWebView: WKWebView, EditorResponder {
         return (markdown, coordinator.parent.selection)
     }
 
-    private func writeRichTextToPasteboard() {
+    @discardableResult
+    private func write(_ command: CopyCommand) -> Bool {
         let source = copySource()
-        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection, documentID: editorCoordinator?.parent.documentID)
+        if command == .plain, source.selection?.isEmpty ?? true { return false }
+        CopyWriter.write(
+            command,
+            markdown: source.markdown,
+            selection: source.selection,
+            documentID: editorCoordinator?.parent.documentID,
+            clipboard: MacClipboard(pasteboard: pasteboard)
+        )
+        return true
     }
 
-    private func writeMarkdownToPasteboard() {
-        let source = copySource()
-        CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection, documentID: editorCoordinator?.parent.documentID)
-    }
-
-    private func writeHTMLToPasteboard() {
-        let source = copySource()
-        CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection, documentID: editorCoordinator?.parent.documentID)
-    }
-
+    /// The context menu: the plain Copy, then Copy as Rich Text and Copy as HTML (ADR-0011).
     private func customizeCopyMenu(_ menu: NSMenu) {
-        guard let copyIndex = menu.items.firstIndex(where: { isCopyMenuItem($0) }) else { return }
+        guard !menu.items.contains(where: { $0.action == #selector(skinnyDipCopyRichText(_:)) }),
+              let copyIndex = menu.items.firstIndex(where: { isCopyMenuItem($0) })
+        else { return }
         let copyItem = menu.items[copyIndex]
-        copyItem.title = "Copy as Rich Text"
+        copyItem.title = "Copy"
         copyItem.target = self
         copyItem.action = #selector(copy(_:))
 
-        let markdownItem = NSMenuItem(
-            title: "Copy as Markdown",
-            action: #selector(skinyDipCopyMarkdown(_:)),
+        let richItem = NSMenuItem(
+            title: "Copy as Rich Text",
+            action: #selector(skinnyDipCopyRichText(_:)),
             keyEquivalent: ""
         )
-        markdownItem.target = self
-        menu.insertItem(markdownItem, at: copyIndex + 1)
+        richItem.target = self
+        menu.insertItem(richItem, at: copyIndex + 1)
 
         let htmlItem = NSMenuItem(
             title: "Copy as HTML",
-            action: #selector(skinyDipCopyHTML(_:)),
+            action: #selector(skinnyDipCopyHTML(_:)),
             keyEquivalent: ""
         )
         htmlItem.target = self

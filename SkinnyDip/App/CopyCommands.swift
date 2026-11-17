@@ -3,9 +3,10 @@ import AppKit
 import SwiftUI
 import MarkdownCore
 
-/// The Edit menu's pasteboard group, with Copy replaced by the three copy
-/// commands. ⌘C is Copy as Rich Text because pasting into Outlook or Teams is
-/// what the app is for; the plain system Copy would paste unformatted Markdown.
+/// The Edit menu's pasteboard group (ADR-0011). ⌘C is the standard Copy: the
+/// selected Markdown as plain text, disabled with no selection. ⌘⇧C Copy as Rich
+/// Text and ⌥⌘C Copy as HTML copy the selection, or the whole document. With the
+/// Preview focused, the commands copy its selection instead of the Editor's.
 struct CopyCommands: Commands {
     @FocusedValue(\.copySource) private var source
     @FocusedValue(\.editorHistoryMenuState) private var historyMenuState
@@ -33,21 +34,15 @@ struct CopyCommands: Commands {
             Button("Cut") { send(#selector(NSText.cut(_:))) }
                 .keyboardShortcut("x")
                 .disabled(!(pasteboardMenuState?.canCut ?? true))
-            Button("Copy as Rich Text", action: copyAsRichText)
+            Button("Copy", action: copy)
                 .keyboardShortcut("c")
                 .disabled(!(pasteboardMenuState?.canCopy ?? true))
-            Button("Copy as Markdown") {
-                guard let source else { return }
-                CopyWriter.writeMarkdown(markdown: source.markdown, selection: source.selection, documentID: source.documentID)
-            }
-            .keyboardShortcut("c", modifiers: [.command, .shift])
-            .disabled(source == nil)
-            Button("Copy as HTML") {
-                guard let source else { return }
-                CopyWriter.writeHTML(markdown: source.markdown, selection: source.selection, documentID: source.documentID)
-            }
-            .keyboardShortcut("c", modifiers: [.command, .option])
-            .disabled(source == nil)
+            Button("Copy as Rich Text") { write(.richText) }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+                .disabled(source == nil || !(pasteboardMenuState?.canCopyRichText ?? true))
+            Button("Copy as HTML") { write(.html) }
+                .keyboardShortcut("c", modifiers: [.command, .option])
+                .disabled(source == nil || !(pasteboardMenuState?.canCopyRichText ?? true))
             Button("Paste as Markdown", action: paste)
                 .keyboardShortcut("v")
             Button("Paste and Match Style", action: pasteAsPlainText)
@@ -60,9 +55,18 @@ struct CopyCommands: Commands {
 
     /// With no document in front (a Settings field, an open panel) ⌘C falls back
     /// to the system Copy, so copying still works everywhere.
-    private func copyAsRichText() {
-        guard let source else { return send(#selector(NSText.copy(_:))) }
-        CopyWriter.writeRichText(markdown: source.markdown, selection: source.selection, documentID: source.documentID)
+    private func copy() {
+        guard source != nil else { return send(#selector(NSText.copy(_:))) }
+        write(.plain)
+    }
+
+    private func write(_ command: CopyCommand) {
+        if let preview = PreviewWebView.focused() {
+            preview.copySelection(command)
+            return
+        }
+        guard let source else { return }
+        CopyWriter.write(command, markdown: source.markdown, selection: source.selection, documentID: source.documentID)
     }
 
     private func paste() {

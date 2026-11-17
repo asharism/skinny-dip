@@ -148,6 +148,7 @@ public struct ThemeFile: Decodable, Equatable, Sendable {
             tab: white.withAlpha(light ? 0.95 : 0.11),
             menu: light ? RGBA(hex: "#ffffff") : RGBA(hex: "#262a31"),
             codeBg: ink.withAlpha(light ? 0.05 : 0.07),
+            currentLine: ink.withAlpha(light ? 0.04 : 0.05),
             cursor: RGBA(hex: cursor),
             shadows: light
                 ? [
@@ -200,6 +201,8 @@ public struct ResolvedTheme: Equatable, Sendable {
     public var tab: RGBA
     public var menu: RGBA
     public var codeBg: RGBA
+    /// The native editor's current-line band (#77): a faint ink tint, quieter than the selection.
+    public var currentLine: RGBA
     public var cursor: RGBA
     public var shadows: [Shadow]
 
@@ -224,6 +227,7 @@ public struct ResolvedTheme: Equatable, Sendable {
         tab: RGBA,
         menu: RGBA,
         codeBg: RGBA,
+        currentLine: RGBA,
         cursor: RGBA,
         shadows: [Shadow]
     ) {
@@ -247,6 +251,7 @@ public struct ResolvedTheme: Equatable, Sendable {
         self.tab = tab
         self.menu = menu
         self.codeBg = codeBg
+        self.currentLine = currentLine
         self.cursor = cursor
         self.shadows = shadows
     }
@@ -267,6 +272,9 @@ public struct ResolvedTheme: Equatable, Sendable {
             "--border": border.css,
             "--border2": border2.css,
             "--code-bg": codeBg.css,
+            "--current-line": currentLine.css,
+            "--gutter-bg": strip.css,
+            "--gutter-border": border2.css,
             "--cursor": cursor.css,
         ]
     }
