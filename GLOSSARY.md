@@ -73,9 +73,13 @@ _Avoid_: Copy for pasting, rich copy, Outlook copy
 The command that puts the Bare HTML on the clipboard as plain text, for pasting HTML source somewhere.
 _Avoid_: Copy HTML source
 
+**Copy**:
+The standard ⌘C: puts the selected Markdown source on the clipboard as plain text only, and does nothing with no selection (ADR-0011).
+_Avoid_: plain copy, copy as text
+
 **Copy as Markdown**:
-The command that puts only the Markdown source on the clipboard, for when the source itself should land in a rich app.
-_Avoid_: plain copy, Copy
+The Copy split button's menu entry that puts the Markdown source of the selection or the whole document on the clipboard as plain text. ⌘C covers it for a selection.
+_Avoid_: plain copy
 
 **Heading Demotion**:
 Shifting every heading down one level on copy so a document's top heading doesn't dominate an email; the lowest level stays where it is.

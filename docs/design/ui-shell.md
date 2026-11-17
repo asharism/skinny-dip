@@ -12,7 +12,7 @@ Inspiration: Rex by Superlogical, for its tab strip, floating panes and themes. 
 │        │ ▣ status-update.md  ✕ │ ▣ reply-to-priya.md • │ ▣ Untitled│          │  Tab strip
 │        ╰───────────────────────────────────────────────────────────╯          │
 │ ╭─ Editor Card ───────────────────────╮ ╭─ Preview Card ───────────────────╮ │
-│ │ ✎ status-update.md  Markdown  ⊟ ⤢   │ │ 👁 Preview  [Copy as Rich Text ⌘C|▾] 🔗 ⤢ ✕│
+│ │ ✎ status-update.md  Markdown  ⊟ ⤢   │ │ 👁 Preview [Copy as Rich Text ⇧⌘C|▾] 🔗 ⤢ ✕│
 │ │                                     │ │                                  │ │
 │ │ # Weekly status — Payments          │ │ Weekly status — Payments         │ │
 │ │ …                                   │ │ …                                │ │
@@ -127,8 +127,8 @@ The right side of the footer shows "Scroll sync" or "Scroll sync off".
 
 The main action of the app, so it's the most visible control.
 
-- **Main part:** a copy icon, **Copy as Rich Text**, and `⌘C` at 70% opacity. When the editor has a non-empty selection, the label reads **Copy Selection** and it copies the selection, exactly like ⌘C.
-- **▾ part** (a 1 pt divider before it): opens a menu with Copy as Rich Text ⌘C, Copy as Markdown ⇧⌘C and Copy as HTML ⌥⌘C.
+- **Main part:** a copy icon, **Copy as Rich Text**, and `⇧⌘C` at 70% opacity. When the editor has a non-empty selection, the label reads **Copy Selection** and it copies the selection, exactly like ⇧⌘C (ADR-0011).
+- **▾ part** (a 1 pt divider before it): opens a menu with Copy as Rich Text ⇧⌘C, Copy as Markdown (no shortcut shown: ⌘C copies only a selection) and Copy as HTML ⌥⌘C.
 - **Colors:** `accent` fill, `onAccent` text (white on light themes, near-black on dark), height 28, radius 8.
 - **Confirmation:** after *any* copy command for this document (button, menu or keyboard), the label changes for 1.4 s to a check and "Copied rich text" / "Copied Markdown" / "Copied HTML". The fill switches to the theme's `code` color, then reverts.
 - The button calls the existing `CopyWriter` functions with the document's `CopySource`. No new copy logic.
@@ -272,7 +272,7 @@ See ADR-0007. **Skinny never asks "Do you want to save?".**
 - Font-family settings.
 - More than two Cards.
 - iPad and iPhone Tabs (P6).
-- Changing the editor gutter. Line numbers are on today and the mockup omits them; that question is still open, and these issues leave the gutter as it is.
+- Changing the editor gutter. Settled later: the native editor gets line numbers and a current-line highlight (ADR-0010 outcome).
 
 ## 10. Issues
 

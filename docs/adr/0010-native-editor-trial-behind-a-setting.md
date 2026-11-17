@@ -17,3 +17,11 @@ STTextView is still rejected. It's GPL-3.0 or paid, and shipping it would make t
 - **Markdown highlighting in the native backend comes from MarkdownCore.** It uses `swift-markdown`'s source ranges, parsed off the main thread, and sets only the foreground color, so highlighting never adds undo steps or marks the document as edited. It doesn't use a regex grammar.
 - **Spell check, autocorrect, dictation and Writing Tools come from AppKit** in the native backend, so it needs none of the issue #6 WebKit workarounds.
 - When the trial ends, the losing backend, its code and its tests are deleted, and this ADR records the result.
+
+## Outcome (2026-11-16)
+
+The native backend won. After a few days of daily use the user doesn't miss CodeMirror, and nothing it offers (multi-cursor, a restored undo stack) came up in practice. We're bending the "delete the loser" rule for one release cycle:
+
+- **Native is the default.** A missing setting now means native, not CodeMirror.
+- **CodeMirror is frozen.** It stays under Settings › Advanced › Editor as "CodeMirror (legacy)", for comparison and as a fallback. It gets no new features, so line numbers and current-line highlighting are native-only. Shared changes above the seam, such as the copy shortcuts (ADR-0011), still reach it for free.
+- **CodeMirror is deleted in 0.3.0**, with its JS bundle, bridge, `Spikes/Editors/` re-run duty and tests, as the original plan required. #65 is closed by this outcome.

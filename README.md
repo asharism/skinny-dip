@@ -2,7 +2,7 @@
 
 <h1 align="center">Skinny</h1>
 
-<p align="center">A Markdown scratchpad for the Mac that copies out as clean rich text.<br>Write Markdown, press ⌘C, paste into Outlook, Teams, Word or Gmail, and it looks like it belongs there.</p>
+<p align="center">A Markdown scratchpad for the Mac that copies out as clean rich text.<br>Write Markdown, press ⇧⌘C, paste into Outlook, Teams, Word or Gmail, and it looks like it belongs there.</p>
 
 ---
 
@@ -10,11 +10,11 @@ Most Markdown tools are good at writing and bad at the last step: getting format
 
 ## Features
 
-- **Copy as Rich Text (⌘C).** Copies the whole document, or just the selection, as clean HTML plus the Markdown, tuned against new Outlook, Outlook for Mac and Teams first.
-- **Copy as Markdown (⇧⌘C)** and **Copy as HTML (⌥⌘C)**, for when you want the source.
+- **Copy as Rich Text (⇧⌘C).** Copies the whole document, or just the selection, as clean HTML plus the Markdown, tuned against new Outlook, Outlook for Mac and Teams first. The Copy button in the Preview does the same.
+- **⌘C is a normal Copy**: the selected Markdown as plain text. **Copy as HTML (⌥⌘C)** copies the HTML source.
 - **Paste as Markdown (⌘V).** Rich text from Word, Outlook, Gmail, Google Docs or a web page lands as tidy Markdown. **⌥⇧⌘V** pastes plain text.
 - **Live preview** that follows the editor's scroll, with syntax-highlighted code blocks.
-- **A real editor** (CodeMirror 6): multiple cursors, find and replace, native Mac text navigation, spell check, dictation and Writing Tools.
+- **A native Mac editor**: Markdown highlighting, find and replace, native Mac text navigation, spell check, dictation and Writing Tools.
 - **Never asks to save.** Saved files autosave in place. Unsaved Scratch Documents come back on relaunch with their undo history, and closed ones wait in Recently Closed (⇧⌘T) for 30 days.
 - **Tabs, themes and zoom.** Light and dark themes that follow the system, and ⌘+ / ⌘− / ⌘0 zoom for the whole window.
 - **Automatic updates** from GitHub Releases. Choose **Skinny → Check for Updates…** to check now.
