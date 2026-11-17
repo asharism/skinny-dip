@@ -9,6 +9,8 @@ struct NativeEditorTheme: Equatable {
     var muted: NSColor
     var cursor: NSColor
     var selection: NSColor
+    /// The current-line band (#77), `ResolvedTheme.currentLine`.
+    var currentLine: NSColor
     var roles: [HighlightRole: NSColor]
     var fontSize: CGFloat
     var inlinePadding: CGFloat
@@ -22,6 +24,7 @@ struct NativeEditorTheme: Equatable {
         muted = color("--muted", .secondaryLabelColor)
         cursor = color("--cursor", .controlAccentColor)
         selection = color("--selection", .selectedTextBackgroundColor)
+        currentLine = color("--current-line", NSColor.textColor.withAlphaComponent(0.05))
         let emphasis = color("--emphasis", foreground)
         roles = [
             .heading: color("--heading", foreground),

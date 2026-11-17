@@ -61,7 +61,20 @@ struct GutterRow: Equatable {
 extension NativeEditorTextView {
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
+        editorCoordinator?.drawCurrentLine(in: rect, textView: self)
         editorCoordinator?.drawGutter(in: rect, textView: self)
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        editorCoordinator?.refreshCurrentLine()
+        return accepted
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        editorCoordinator?.refreshCurrentLine()
+        return resigned
     }
 }
 
@@ -124,11 +137,99 @@ extension NativeEditorView.Coordinator {
     func drawGutter(in rect: NSRect, textView: NSTextView) {
         guard gutter.isVisible, rect.minX < gutter.width else { return }
         let numberRight = gutter.textOriginX - gutter.gap
-        let attributes = gutter.attributes(color: gutter.theme.muted)
+        let muted = gutter.attributes(color: gutter.theme.muted)
+        let current = gutter.attributes(color: gutter.theme.foreground)
+        let currentLine = showsCurrentLine ? currentLineNumber() : nil
         for row in gutterRows(in: rect, textView: textView) {
             let box = NSRect(x: 0, y: row.rect.minY, width: numberRight, height: row.rect.height)
+            let attributes = row.line == currentLine ? current : muted
             ("\(row.line)" as NSString).draw(with: box, options: [.usesLineFragmentOrigin], attributes: attributes)
         }
+    }
+
+    // MARK: Current line (#77)
+
+    /// The caret's whole logical line, every wrapped row of it, as one band
+    /// across the text view. Nil for a non-empty selection. Focus is checked
+    /// separately, by `showsCurrentLine`.
+    func currentLineRect() -> NSRect? {
+        guard let textView,
+              let layoutManager = textView.textLayoutManager,
+              let contentManager = layoutManager.textContentManager
+        else { return nil }
+        let ranges = textView.selectedRanges.map(\.rangeValue)
+        guard ranges.count == 1, let caret = ranges.first, caret.length == 0 else { return nil }
+        let lines = lineNumbering(of: textView.string)
+        let line = lines.line(atUTF16: caret.location)
+        let start = lines.start(ofLine: line)
+        let end = line < lines.count ? lines.start(ofLine: line + 1) : (textView.string as NSString).length
+        let origin = textView.textContainerOrigin
+        let documentStart = layoutManager.documentRange.location
+
+        // The empty last line has no paragraph of its own: use its gutter row.
+        if line == lines.count, start == end {
+            var row = NSRect(x: 0, y: origin.y, width: textView.bounds.width, height: gutter.lineHeight)
+            if let last = lastFragment(layoutManager) {
+                let frame = last.layoutFragmentFrame
+                if let extra = last.textLineFragments.last, last.textLineFragments.count > 1, extra.characterRange.length == 0 {
+                    row.origin.y = frame.minY + extra.typographicBounds.minY + origin.y
+                    row.size.height = extra.typographicBounds.height
+                } else {
+                    row.origin.y = frame.maxY + origin.y
+                }
+            }
+            return row
+        }
+
+        guard let location = contentManager.location(documentStart, offsetBy: start) else { return nil }
+        var frame: CGRect?
+        layoutManager.enumerateTextLayoutFragments(from: location, options: [.ensuresLayout]) { fragment in
+            let offset = contentManager.offset(from: documentStart, to: fragment.rangeInElement.location)
+            guard offset < end || frame == nil else { return false }
+            var fragmentFrame = fragment.layoutFragmentFrame
+            // The last paragraph's fragment also holds the empty line after a
+            // trailing break; that row belongs to the next line.
+            if let extra = fragment.textLineFragments.last, fragment.textLineFragments.count > 1,
+               extra.characterRange.length == 0 {
+                fragmentFrame.size.height = extra.typographicBounds.minY
+            }
+            frame = frame.map { $0.union(fragmentFrame) } ?? fragmentFrame
+            return true
+        }
+        guard let frame else { return nil }
+        return NSRect(x: 0, y: frame.minY + origin.y, width: textView.bounds.width, height: frame.height)
+    }
+
+    /// Only while the editor has focus in the key window, the selection is
+    /// empty and Writing Tools isn't rewriting the text.
+    var showsCurrentLine: Bool {
+        guard let textView, let window = textView.window else { return false }
+        return window.firstResponder === textView
+            && window.isKeyWindow
+            && textView.selectedRange().length == 0
+            && !textView.isWritingToolsActive
+    }
+
+    private func currentLineNumber() -> Int? {
+        guard let textView else { return nil }
+        return lineNumbering(of: textView.string).line(atUTF16: textView.selectedRange().location)
+    }
+
+    func drawCurrentLine(in rect: NSRect, textView: NSTextView) {
+        guard showsCurrentLine, let band = currentLineRect(), band.intersects(rect) else { return }
+        gutter.theme.currentLine.setFill()
+        band.intersection(rect).fill(using: .sourceOver)
+    }
+
+    /// After a caret move, an edit or a focus change: redraws the old band and the new one.
+    func refreshCurrentLine() {
+        guard let textView else { return }
+        let next = showsCurrentLine ? currentLineRect() : nil
+        if let drawnCurrentLine { textView.setNeedsDisplay(drawnCurrentLine) }
+        if let next { textView.setNeedsDisplay(next) }
+        // The old and new numbers change colour too.
+        if drawnCurrentLine != next { invalidateGutter() }
+        drawnCurrentLine = next
     }
 
     /// The gutter strip of the visible rect, for redraws after an edit or a scroll.

@@ -109,12 +109,35 @@ struct ThemeTests {
         }
     }
 
+    @Test func testShippedThemesResolveCurrentLine() throws {
+        let directory = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("SkinnyDip/Resources/themes")
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "json" }
+        #expect(!files.isEmpty)
+        for url in files {
+            let theme = try JSONDecoder().decode(ThemeFile.self, from: Data(contentsOf: url)).resolve()
+            let variables = theme.cssVariables()
+            #expect(variables["--current-line"] != nil, "\(url.lastPathComponent)")
+            #expect(variables["--current-line"] != variables["--selection"], "\(url.lastPathComponent)")
+            #expect(theme.currentLine != theme.selection, "\(url.lastPathComponent)")
+            #expect(theme.currentLine.a > 0, "\(url.lastPathComponent)")
+            // Quieter than the selection: a faint tint, not a highlight.
+            #expect(theme.currentLine.a < theme.selection.a, "\(url.lastPathComponent)")
+        }
+    }
+
     @Test func testCSSVariables() throws {
         let variables = try loadFixture("paper").resolve().cssVariables()
         #expect(Set(variables.keys) == [
             "--fg", "--muted", "--accent", "--selection", "--heading", "--marker",
             "--emphasis", "--link", "--code", "--quote", "--border", "--border2",
-            "--code-bg", "--cursor",
+            "--code-bg", "--cursor", "--current-line",
         ])
         #expect(variables["--fg"] == "#2b2b2b")
     }

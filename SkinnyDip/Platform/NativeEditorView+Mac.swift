@@ -54,6 +54,8 @@ struct NativeEditorView: NSViewRepresentable {
         private var viewportScheduled = false
         private var lines: LineNumbering?
         private(set) var gutter: NativeEditorGutter
+        /// Where the current-line band was last drawn, so a caret move redraws only the two bands.
+        var drawnCurrentLine: NSRect?
 
         init(parent: NativeEditorView) {
             self.parent = parent
@@ -125,6 +127,9 @@ struct NativeEditorView: NSViewRepresentable {
             }
             scrollView.contentView.postsBoundsChangedNotifications = true
             center.addObserver(self, selector: #selector(boundsChanged(_:)), name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
+            for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification] {
+                center.addObserver(self, selector: #selector(windowKeyChanged(_:)), name: name, object: nil)
+            }
             textView.postsFrameChangedNotifications = true
             center.addObserver(self, selector: #selector(frameChanged(_:)), name: NSView.frameDidChangeNotification, object: textView)
             return scrollView
@@ -217,6 +222,7 @@ struct NativeEditorView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView else { return }
             linesDidChange()
+            refreshCurrentLine()
             highlighter?.textDidChange()
             let newText = textView.string
             lastEditorText = newText
@@ -241,6 +247,7 @@ struct NativeEditorView: NSViewRepresentable {
 
         func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView else { return }
+            refreshCurrentLine()
             let ranges = textView.selectedRanges.map(\.rangeValue)
             let main = ranges.first ?? NSRange(location: 0, length: 0)
             parent.controller.cursorUTF16 = main.location
@@ -300,6 +307,20 @@ struct NativeEditorView: NSViewRepresentable {
 
         @objc private func frameChanged(_ notification: Notification) {
             invalidateGutter()
+            refreshCurrentLine()
+        }
+
+        @objc private func windowKeyChanged(_ notification: Notification) {
+            guard let window = notification.object as? NSWindow, window === textView?.window else { return }
+            refreshCurrentLine()
+        }
+
+        func textViewWritingToolsWillBegin(_ textView: NSTextView) {
+            DispatchQueue.main.async { [weak self] in self?.refreshCurrentLine() }
+        }
+
+        func textViewWritingToolsDidEnd(_ textView: NSTextView) {
+            DispatchQueue.main.async { [weak self] in self?.refreshCurrentLine() }
         }
 
         // MARK: Scroll sync (ADR-0006)

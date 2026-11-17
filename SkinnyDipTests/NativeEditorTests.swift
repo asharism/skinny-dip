@@ -333,6 +333,88 @@ struct NativeEditorTests {
     }
 }
 
+// MARK: Current-line highlight (#77)
+
+@MainActor
+struct NativeEditorCurrentLineTests {
+    @Test func currentLineRectCoversWrappedParagraph() throws {
+        let long = String(repeating: "wrapping words ", count: 40)
+        let harness = NativeEditorHarness(text: "short\n\(long)\nend")
+        defer { harness.teardown() }
+        let textView: NativeEditorTextView = harness.textView
+        let layoutManager = try #require(textView.textLayoutManager)
+        let contentManager = try #require(layoutManager.textContentManager)
+        let paragraphStart = 6
+        let location = try #require(contentManager.location(layoutManager.documentRange.location, offsetBy: paragraphStart))
+        layoutManager.ensureLayout(for: layoutManager.documentRange)
+        let fragment = try #require(layoutManager.textLayoutFragment(for: location))
+        #expect(fragment.textLineFragments.count >= 3)
+        let third = fragment.textLineFragments[2]
+
+        textView.setSelectedRange(NSRange(location: paragraphStart + third.characterRange.location + 2, length: 0))
+        let rect = try #require(harness.coordinator.currentLineRect())
+        #expect(abs(rect.height - fragment.layoutFragmentFrame.height) < 0.5)
+        #expect(abs(rect.minY - (fragment.layoutFragmentFrame.minY + textView.textContainerOrigin.y)) < 0.5)
+        // One band from the left edge to the right edge of the text view.
+        #expect(rect.minX == 0)
+        #expect(rect.width == textView.bounds.width)
+
+        // A one-row line, and the last line.
+        textView.setSelectedRange(NSRange(location: 2, length: 0))
+        let short = try #require(harness.coordinator.currentLineRect())
+        #expect(short.height < rect.height / 2)
+        textView.setSelectedRange(NSRange(location: (textView.string as NSString).length, length: 0))
+        #expect(harness.coordinator.currentLineRect()?.minY ?? 0 > rect.maxY - 1)
+    }
+
+    @Test func currentLineOnEmptyLastLine() throws {
+        let harness = NativeEditorHarness(text: "a\nb\n")
+        defer { harness.teardown() }
+        harness.textView.setSelectedRange(NSRange(location: 2, length: 0))
+        let second = try #require(harness.coordinator.currentLineRect())
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 0))
+        let last = try #require(harness.coordinator.currentLineRect())
+        #expect(abs(last.minY - second.maxY) < 1)
+        #expect(abs(last.height - second.height) < 1)
+
+        let empty = NativeEditorHarness(text: "")
+        defer { empty.teardown() }
+        let rect = try #require(empty.coordinator.currentLineRect())
+        #expect(abs(rect.height - second.height) < 1)
+    }
+
+    @Test func noHighlightWithSelection() {
+        let harness = NativeEditorHarness(text: "one\ntwo\nthree")
+        defer { harness.teardown() }
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 0))
+        #expect(harness.coordinator.currentLineRect() != nil)
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 2))
+        #expect(harness.coordinator.currentLineRect() == nil)
+        harness.textView.setSelectedRange(NSRange(location: 5, length: 0))
+        #expect(harness.coordinator.currentLineRect() != nil)
+    }
+
+    @Test func highlightDoesNotEditOrUndo() async throws {
+        let harness = NativeEditorHarness(text: "# Title\n\nBody text\nMore")
+        defer { harness.teardown() }
+        let storage = try #require(harness.textView.textStorage)
+        let before = NSAttributedString(attributedString: storage)
+        for offset in [0, 3, 9, 14, 20, 2] {
+            harness.textView.setSelectedRange(NSRange(location: offset, length: 0))
+            harness.display()
+        }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        #expect(harness.textView.undoManager?.canUndo == false)
+        #expect(!harness.model.canUndo)
+        #expect(harness.model.textWrites == 0)
+        // No background attributes: the band is drawn, never stored in the text.
+        #expect(storage.isEqual(to: before))
+        storage.enumerateAttribute(.backgroundColor, in: NSRange(location: 0, length: storage.length)) { value, _, _ in
+            #expect(value == nil)
+        }
+    }
+}
+
 @MainActor
 final class NativeEditorModel {
     var text: String { didSet { textWrites += 1 } }
