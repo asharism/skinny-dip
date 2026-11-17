@@ -72,12 +72,12 @@ struct ScratchStoreTests {
     @Test func reopenMovesTheFileBackAndASecondReopenThrows() throws {
         let (store, root) = try makeStore()
         let id = UUID()
-        try store.save(id: id, text: "back", meta: meta(Date(timeIntervalSince1970: 10), window: 2, tab: 3, history: "hist"))
+        try store.save(id: id, text: "back", meta: meta(Date(timeIntervalSince1970: 10), window: 2, tab: 3))
         try store.close(id: id)
         let restored = try store.reopen(id: id)
         #expect(restored.text == "back")
         #expect(restored.meta.closedAt == nil)
-        #expect(restored.meta.undoHistory == "hist")
+        #expect(restored.meta.windowIndex == 2)
         #expect(FileManager.default.fileExists(atPath: root.appendingPathComponent("\(id.uuidString).md").path))
         #expect(throws: ScratchStoreError.notFound) {
             try store.reopen(id: id)
@@ -125,7 +125,6 @@ struct ScratchStoreTests {
         #expect(opened[0].text == "readable")
         #expect(opened[0].meta.windowIndex == 0)
         #expect(opened[0].meta.tabIndex == 0)
-        #expect(opened[0].meta.undoHistory == nil)
         #expect(opened[0].meta.createdAt == clock)
     }
 
@@ -136,35 +135,13 @@ struct ScratchStoreTests {
         #expect(try store.open().isEmpty)
     }
 
-    @Test func roundTripsALargeUndoHistory() throws {
-        let (store, _) = try makeStore()
-        let id = UUID()
-        let history = String(repeating: "x", count: 1_000_000)
-        try store.save(id: id, text: "body", meta: meta(Date(timeIntervalSince1970: 10), window: 0, tab: 0, history: history))
-        #expect(try store.open().first?.meta.undoHistory == history)
-    }
-
-    @Test func roundTripsTheHistoryBackendTag() throws {
-        let (store, _) = try makeStore()
-        let id = UUID()
-        var tagged = meta(Date(timeIntervalSince1970: 10), window: 0, tab: 0, history: "h")
-        tagged.undoHistoryBackend = "codeMirror"
-        try store.save(id: id, text: "body", meta: tagged)
-        #expect(try store.open().first?.meta.undoHistoryBackend == "codeMirror")
-    }
-
-    @Test func legacySidecarDecodesWithoutABackendTag() throws {
-        let legacy = #"{"createdAt":0,"updatedAt":0,"windowIndex":0,"tabIndex":0,"undoHistory":"h"}"#
+    /// Older sidecars carry the removed CodeMirror editor's undo
+    /// history. They must still open, or those Scratch Documents lose their placement.
+    @Test func legacySidecarWithUndoHistoryStillDecodes() throws {
+        let legacy = #"{"createdAt":0,"updatedAt":0,"windowIndex":2,"tabIndex":3,"undoHistory":"h","undoHistoryBackend":"codeMirror"}"#
         let meta = try JSONDecoder().decode(ScratchMeta.self, from: Data(legacy.utf8))
-        #expect(meta.undoHistory == "h")
-        #expect(meta.undoHistoryBackend == nil)
-    }
-
-    @Test func mismatchedHistoryIsDropped() {
-        let json = #"{"doc":"hello","history":[]}"#
-        #expect(ScratchRestore.history(forText: "hello", storedHistoryJSON: json) == json)
-        #expect(ScratchRestore.history(forText: "edited by hand", storedHistoryJSON: json) == nil)
-        #expect(ScratchRestore.history(forText: "hello", storedHistoryJSON: "not json") == nil)
+        #expect(meta.windowIndex == 2)
+        #expect(meta.tabIndex == 3)
     }
 
     private func makeStore(
@@ -177,8 +154,8 @@ struct ScratchStoreTests {
         return (store, root)
     }
 
-    private func meta(_ date: Date, window: Int, tab: Int, history: String? = nil) -> ScratchMeta {
-        ScratchMeta(createdAt: date, updatedAt: date, windowIndex: window, tabIndex: tab, undoHistory: history)
+    private func meta(_ date: Date, window: Int, tab: Int) -> ScratchMeta {
+        ScratchMeta(createdAt: date, updatedAt: date, windowIndex: window, tabIndex: tab)
     }
 
 }

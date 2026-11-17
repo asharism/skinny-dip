@@ -205,7 +205,7 @@ The default is **Match System** using Paper and Ink.
 **Where themes apply**
 
 - Window gradient, Tab strip, Cards and menus: SwiftUI, from the resolved tokens.
-- **Editor:** CodeMirror is themed through CSS variables that Swift sets with `window.setTheme(tokens)`, replacing today's `lightHighlight`/`darkHighlight` pair. The editor background is transparent, so the Card shows through.
+- **Editor:** the native editor (ADR-0010) reads the same theme variables as the Preview (`NativeEditorTheme`). The editor background is transparent, so the Card shows through.
 - **Preview:** `theme.css` reads CSS variables (`--fg`, `--muted`, `--link`, `--border`, `--code-bg`, `--quote`), set with `window.setTheme(tokens)` in `preview.html`. The background is transparent. highlight.js colors in fenced code come from the same role colors.
 - **Never the clipboard** (ADR-0001). Bare HTML has no colors.
 
@@ -222,7 +222,7 @@ VS Code style: **⌘+ / ⌘− / ⌘0** (View ▸ Zoom In / Zoom Out / Actual Si
 
 - Levels: 50%–200% in 10% steps; ⌘0 resets to 100%. ⌘= also zooms in (the unshifted key).
 - App-wide and remembered (`uiZoom`, a Double, default 1.0). Every open window follows at once.
-- Implementation: one `zoom` value in the environment. SwiftUI metrics come from a `Metrics` struct (`metrics.titleBar = 52 * zoom`, and so on); never use hard-coded numbers in views. Fonts use `.system(size: base * zoom)`. The two web views get `--zoom` and font-size CSS variables through `setTheme`/`setZoom`, not WebKit page zoom, so CodeMirror measures lines correctly.
+- Implementation: one `zoom` value in the environment. SwiftUI metrics come from a `Metrics` struct (`metrics.titleBar = 52 * zoom`, and so on); never use hard-coded numbers in views. Fonts use `.system(size: base * zoom)`. The Preview gets `--zoom` and font-size CSS variables through `setTheme`/`setZoom`, not WebKit page zoom; the native editor reads the same values.
 - There is no separate editor font-size setting.
 
 ## 7. Settings keys
@@ -261,7 +261,7 @@ See ADR-0007. **Skinny never asks "Do you want to save?".**
   - File ▸ Reopen Closed Tab (⇧⌘T) reopens the most recently closed scratch document as a scratch Tab.
   - File ▸ Recently Closed ▸ lists up to 20, newest first, titled with `DocumentTitle.suggested` and the relative close time ("Weekly status — Payments · 2 h ago").
   - Entries older than 30 days are deleted on launch.
-- **Undo:** CodeMirror history keeps at least **10,000** undo steps per document (`history({minDepth: 10000, newGroupDelay: 750})`). For scratch documents, the history is serialized (`historyField`) into the sidecar on each write and restored on reopen, including after Reopen Closed Tab. Saved files keep history in memory only.
+- **Undo:** the native editor's `NSUndoManager` keeps undo in memory only, for scratch documents and saved files alike. `NSUndoManager` can't be serialized, so a reopened scratch document comes back with its text but an empty undo stack (ADR-0010).
 - **Duplicate:** creates a new scratch document with the same text, titled "<title> copy" until edited (a saved `notes.md` gives "notes copy"; a scratch document gives "<suggested title> copy"), inserted as the Tab right after the current one, with the cursor at the start. Its undo history starts empty.
 
 ## 9. Out of scope here

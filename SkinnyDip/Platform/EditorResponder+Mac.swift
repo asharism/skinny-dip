@@ -1,9 +1,8 @@
 #if os(macOS)
 import AppKit
 
-/// What the menus, ⌘V and Writing Tools need from whichever Editor Backend is
-/// running (ADR-0010). The responder class itself conforms, so the shell never
-/// names `EditorWebView` or the native text view.
+/// What the menus, ⌘V and Writing Tools need from the editor. The responder
+/// class itself conforms, so the shell never names the native text view.
 @MainActor
 protocol EditorResponder: NSResponder {
     /// ⌘V (Paste as Markdown) or, with `plain`, ⌥⇧⌘V: one undoable insert.
@@ -16,7 +15,7 @@ protocol EditorResponder: NSResponder {
 
 @MainActor
 enum EditorResponders {
-    /// The Edit menu sends these down the responder chain; every backend answers them.
+    /// The Edit menu sends these down the responder chain; the editor answers them.
     static let undoSelector = NSSelectorFromString("skinnyDipUndo:")
     static let redoSelector = NSSelectorFromString("skinnyDipRedo:")
 

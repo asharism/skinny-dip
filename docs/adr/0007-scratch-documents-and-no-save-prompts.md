@@ -1,5 +1,7 @@
 # Scratch documents, and no save prompts
 
+_Amended by ADR-0010: with CodeMirror removed, Scratch Documents reopen with their text and placement but not their undo history._
+
 Skinny never asks "Do you want to save?". Saved files autosave in place, which is `DocumentGroup`'s default. Documents the user never saved are **Scratch Documents**: Skinny stores them in its own Application Support folder, writes them a second after each edit, and reopens every one of them as a Tab on launch, together with its undo history. Closing a non-empty Scratch Document's Tab moves it to **Recently Closed** (kept 30 days, reopened with ⇧⌘T) instead of prompting. Details are in `docs/design/ui-shell.md` §8.
 
 macOS already autosaves untitled documents, but it falls short in two ways. Closing one still asks "Save or delete?". And whether untitled documents come back after quitting depends on a system-wide setting ("Close windows when quitting an application") the app doesn't control. Skinny is a scratchpad, so drafts that vanish or nag defeat its purpose. We rejected always prompting (the macOS default), and also no-prompt without Recently Closed, where one misclick on ✕ loses a draft for good.

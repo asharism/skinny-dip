@@ -25,3 +25,7 @@ The native backend won. After a few days of daily use the user doesn't miss Code
 - **Native is the default.** A missing setting now means native, not CodeMirror.
 - **CodeMirror is frozen.** It stays under Settings › Advanced › Editor as "CodeMirror (legacy)", for comparison and as a fallback. It gets no new features, so line numbers and current-line highlighting are native-only. Shared changes above the seam, such as the copy shortcuts (ADR-0011), still reach it for free.
 - **CodeMirror is deleted in 0.3.0**, with its JS bundle, bridge, `Spikes/Editors/` re-run duty and tests, as the original plan required. #65 is closed by this outcome.
+
+## Removal (2026-11-17)
+
+The user decided not to wait for 0.3.0: CodeMirror is gone. Removed with it: `editor.html`, the JS bundle and its sources, the `EditorWebView` bridge, `EditorBackendKind` and the relaunching switch, Settings › Advanced, the WKWebView test harness (`EditorNativeTextTests`), and the CodeMirror undo-history persistence (`ScratchHistory`, `ScratchRestore`, `EditorHistory`, `ScratchMeta.undoHistory`). Sidecars written before the removal still decode; their history keys are ignored. `Spikes/Editors/` stays as the record of the original comparison, but re-running it is no longer a duty.

@@ -2,30 +2,16 @@
 import AppKit
 import WebKit
 
-/// An Editor Backend the soak harness (#62) can type into as if a person were typing.
+/// An editor the soak harness (#62) can type into as if a person were typing.
 /// Each call is real user input: undo history, the document binding, the Preview and the
-/// Scratch Document flush all run as they do for keystrokes. A backend must also call
+/// Scratch Document flush all run as they do for keystrokes. The editor must also call
 /// `EditorController.debugTextObserver` whenever it reports a text change, so the harness
-/// can time each character. CodeMirror conforms through `debugType` in `editor.js`;
-/// the native backend (#64) conforms with `insertText(_:replacementRange:)`.
+/// can time each character. The native editor (#64) conforms with `insertText(_:replacementRange:)`.
 @MainActor
 protocol DebugTypingTarget: AnyObject {
     var debugEditorController: EditorController? { get }
     /// Types `text`, one character per user-input transaction. False if the editor isn't ready.
     func debugType(_ text: String) async -> Bool
-}
-
-extension EditorWebView: DebugTypingTarget {
-    var debugEditorController: EditorController? { editorCoordinator?.parent.controller }
-
-    func debugType(_ text: String) async -> Bool {
-        let length = try? await callAsyncJavaScript(
-            "return debugType(text)",
-            arguments: ["text": text],
-            contentWorld: .page
-        )
-        return length != nil
-    }
 }
 
 extension NativeEditorTextView: DebugTypingTarget {
@@ -147,13 +133,10 @@ struct LatencyStats: Codable, Equatable {
 /// - `SKINNYDIP_SOAK_MINUTES` typing minutes (default 30), `SKINNYDIP_SOAK_IDLE_MINUTES` (default 10)
 /// - `SKINNYDIP_SOAK_TABS` (default 3), `SKINNYDIP_SOAK_SEED` (default 1)
 /// - `SKINNYDIP_SOAK_NO_PREVIEW=1`: no Preview web view and no Preview rendering
-/// - `SKINNYDIP_SOAK_NO_HISTORY_EXPORT=1`: Scratch flushes skip `exportState()`; history is
-///   exported only on close and quit
 @MainActor
 enum DebugSoak {
     private static let environment = ProcessInfo.processInfo.environment
     static let hidesPreview = environment["SKINNYDIP_SOAK_NO_PREVIEW"] == "1"
-    static let skipsHistoryExport = environment["SKINNYDIP_SOAK_NO_HISTORY_EXPORT"] == "1"
 
     private static var runner: SoakRunner?
 
@@ -167,8 +150,7 @@ enum DebugSoak {
             idleMinutes: number("SKINNYDIP_SOAK_IDLE_MINUTES", 10),
             tabs: Int(number("SKINNYDIP_SOAK_TABS", 3)),
             seed: UInt64(number("SKINNYDIP_SOAK_SEED", 1)),
-            noPreview: hidesPreview,
-            noHistoryExport: skipsHistoryExport
+            noPreview: hidesPreview
         )
         let runner = SoakRunner(config: config, log: URL(fileURLWithPath: path))
         self.runner = runner
@@ -184,7 +166,6 @@ final class SoakRunner {
         var tabs: Int
         var seed: UInt64
         var noPreview: Bool
-        var noHistoryExport: Bool
         var charactersPerSecond = 8.0
         var pauseEvery = 40
         var pauseSeconds = 1.2

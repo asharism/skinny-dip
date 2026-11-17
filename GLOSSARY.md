@@ -12,10 +12,6 @@ _Avoid_: raw text, plain text, model
 The live rendering of the Markdown Source in its own Card, showing the structure Copy as Rich Text will paste, in Skinny's own theme rather than the destination's.
 _Avoid_: viewer, render pane
 
-**Editor Backend**:
-The text-editing engine behind the Editor Card, either CodeMirror 6 in a web view or native `NSTextView`; picked in Settings › Advanced, one per app run (ADR-0010).
-_Avoid_: editor engine, editor mode
-
 ## Window
 
 **Window**:
@@ -49,7 +45,7 @@ _Avoid_: linked scrolling
 ## Documents
 
 **Scratch Document**:
-A document the user has never saved to a location of their choosing; Skinny stores it itself, with its undo history, and reopens it on launch.
+A document the user has never saved to a location of their choosing; Skinny stores it itself and reopens it on launch.
 _Avoid_: untitled file, temp file, draft
 
 **Recently Closed**:

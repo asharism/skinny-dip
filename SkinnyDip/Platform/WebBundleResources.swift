@@ -1,15 +1,15 @@
 #if os(macOS)
 import Foundation
 
-/// Directory in the app bundle that holds `editor.html`, `preview.html`, and related assets.
+/// Directory in the app bundle that holds `preview.html` and related assets.
 enum WebBundleResources {
     static func directory() -> URL? {
         guard let root = Bundle.main.resourceURL else { return nil }
         let nested = root.appendingPathComponent("Resources", isDirectory: true)
-        if FileManager.default.fileExists(atPath: nested.appendingPathComponent("editor.html").path) {
+        if FileManager.default.fileExists(atPath: nested.appendingPathComponent("preview.html").path) {
             return nested
         }
-        if FileManager.default.fileExists(atPath: root.appendingPathComponent("editor.html").path) {
+        if FileManager.default.fileExists(atPath: root.appendingPathComponent("preview.html").path) {
             return root
         }
         return nil

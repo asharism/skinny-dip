@@ -1,7 +1,7 @@
 import Testing
 import MarkdownCore
 
-/// CodeMirror reports selection as UTF-16 code-unit offsets, same as JavaScript strings.
+/// `NSTextView` reports selection as UTF-16 code-unit offsets.
 struct UTF16SelectionTests {
     @Test func asciiRange() {
         let text = "hello"

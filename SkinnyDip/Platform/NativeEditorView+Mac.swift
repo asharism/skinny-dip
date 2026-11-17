@@ -3,8 +3,7 @@ import AppKit
 import MarkdownCore
 import SwiftUI
 
-/// The native Editor Backend (ADR-0010): `NSTextView` on TextKit 2, with the
-/// same inputs as the CodeMirror `EditorView`. The scroll view and text view
+/// The editor (ADR-0010): `NSTextView` on TextKit 2. The scroll view and text view
 /// are built by hand because `NSTextView.scrollableTextView()` returns a
 /// TextKit 1 view (Silica's `TextController`, MIT).
 struct NativeEditorView: NSViewRepresentable {
@@ -91,7 +90,7 @@ struct NativeEditorView: NSViewRepresentable {
             textView.isIncrementalSearchingEnabled = true
             // The Markdown Source is never rewritten (ADR-0002): no smart quotes,
             // dashes or text replacement. Spell check stays on; autocorrect follows
-            // the system setting, as WebKit does for CodeMirror.
+            // the system setting.
             textView.isAutomaticQuoteSubstitutionEnabled = false
             textView.isAutomaticDashSubstitutionEnabled = false
             textView.isAutomaticTextReplacementEnabled = false
@@ -115,11 +114,6 @@ struct NativeEditorView: NSViewRepresentable {
 
             highlighter = NativeHighlighter(textView: textView, theme: theme)
             highlighter?.highlightNow()
-
-            // Scratch Documents restore text without undo history in this backend (ADR-0010).
-            parent.controller.exportState = nil
-            parent.controller.importState = nil
-            parent.controller.pendingHistory = nil
 
             let center = NotificationCenter.default
             for name in [Notification.Name.NSUndoManagerDidCloseUndoGroup, .NSUndoManagerDidUndoChange, .NSUndoManagerDidRedoChange] {

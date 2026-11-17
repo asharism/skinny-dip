@@ -119,12 +119,6 @@ struct ContentView: View {
             applyTitle(immediate: true)
             scheduleWords(immediate: true)
             refreshPreview()
-            editor.pendingHistory = ScratchHistory.restorable(
-                forText: document.source,
-                storedHistoryJSON: document.undoHistory,
-                storedBackend: document.undoHistoryBackend,
-                current: .current
-            )
             registerWindow()
         }
         .onChange(of: document.source) { _, newValue in
@@ -519,8 +513,7 @@ struct ContentView: View {
         scratchTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard !Task.isCancelled else { return }
-            let history = soakSkipsHistoryExport ? nil : await editor.exportState?()
-            ScratchSession.shared.flush(id: id, history: history)
+            ScratchSession.shared.flush(id: id)
             clearEdited()
             tabs.refresh()
         }
@@ -530,14 +523,6 @@ struct ContentView: View {
     private var soakHidesPreview: Bool {
         #if DEBUG
         DebugSoak.hidesPreview
-        #else
-        false
-        #endif
-    }
-
-    private var soakSkipsHistoryExport: Bool {
-        #if DEBUG
-        DebugSoak.skipsHistoryExport
         #else
         false
         #endif

@@ -1,7 +1,7 @@
 #if os(macOS)
 import AppKit
 
-/// Keeps Writing Tools and Spelling items on the Edit menu wired for the key window's editor web view.
+/// Keeps the Writing Tools item on the Edit menu in step with the system's submenu.
 @MainActor
 final class EditMenuDelegate: NSObject, NSMenuDelegate {
     static let shared = EditMenuDelegate()

@@ -14,24 +14,17 @@ struct MarkdownDocument: FileDocument {
     var source: String
     /// In memory only. Never written into the `.md` (ADR-0007).
     var scratchID: UUID?
-    var undoHistory: String?
-    /// The Editor Backend that wrote `undoHistory`; `nil` means CodeMirror (ADR-0010).
-    var undoHistoryBackend: String?
     var pinnedTitle: String?
     var createdAt: Date
 
     init(
         source: String = "",
         scratchID: UUID? = nil,
-        undoHistory: String? = nil,
-        undoHistoryBackend: String? = nil,
         pinnedTitle: String? = nil,
         createdAt: Date = Date()
     ) {
         self.source = source
         self.scratchID = scratchID
-        self.undoHistory = undoHistory
-        self.undoHistoryBackend = undoHistoryBackend
         self.pinnedTitle = pinnedTitle
         self.createdAt = createdAt
     }
@@ -42,8 +35,6 @@ struct MarkdownDocument: FileDocument {
         else { throw CocoaError(.fileReadCorruptFile) }
         self.source = source
         self.scratchID = nil
-        self.undoHistory = nil
-        self.undoHistoryBackend = nil
         self.pinnedTitle = nil
         self.createdAt = Date()
     }

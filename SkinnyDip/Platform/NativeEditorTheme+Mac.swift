@@ -2,7 +2,7 @@
 import AppKit
 import MarkdownCore
 
-/// The native Editor Backend reads the same theme variables CodeMirror gets
+/// The editor reads the theme variables the Preview gets
 /// (`ResolvedTheme.cssVariables()` plus font size, inline padding and Zoom).
 struct NativeEditorTheme: Equatable {
     var foreground: NSColor
@@ -66,7 +66,7 @@ struct NativeEditorTheme: Equatable {
         return italic ? NSFontManager.shared.convert(mono, toHaveTrait: .italicFontMask) : mono
     }
 
-    /// CodeMirror's `.cm-content` padding: 8 above and 16 below (times Zoom),
+    /// Content padding: 8 above and 16 below (times Zoom),
     /// the inline padding at the sides.
     var insets: (horizontal: CGFloat, top: CGFloat, bottom: CGFloat) {
         (inlinePadding, 8 * zoom, 16 * zoom)
