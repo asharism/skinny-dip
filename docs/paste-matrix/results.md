@@ -13,3 +13,6 @@ Legend: ✅ looks right, ⚠️ usable but off (note it), ❌ broken.
 | 0.1.4 | Gmail web | 2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Reported working well overall (whole document and Preview selection); columns not checked one by one |
 | 0.1.4 | Apple Mail | 2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Reported working well overall (whole document and Preview selection); columns not checked one by one |
 | 0.1.4 | Google Docs | 2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Reported working well overall (whole document and Preview selection); columns not checked one by one |
+| 0.2.0 | new Outlook | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Reported release checklist completed (⌘⇧C whole document; plain ⌘C pastes literal Markdown); columns not checked one by one |
+| 0.2.0 | Outlook for Mac | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Reported release checklist completed (⌘⇧C whole document; plain ⌘C pastes literal Markdown); columns not checked one by one |
+| 0.2.0 | Teams | 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Reported release checklist completed (⌘⇧C whole document; plain ⌘C pastes literal Markdown); columns not checked one by one |
