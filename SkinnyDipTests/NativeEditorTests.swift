@@ -99,6 +99,78 @@ struct NativeEditorTests {
         #expect(harness.textView.copySource().selection == nil)
     }
 
+    /// ADR-0011: ⌘C and ⌘X write the selected Markdown as plain text only.
+    @Test func copyWritesPlainTextOnly() {
+        let pasteboard = NSPasteboard(name: .init("SkinnyDipTests.native.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        let harness = NativeEditorHarness(text: "one **two** three")
+        defer { harness.teardown() }
+        harness.textView.pasteboard = pasteboard
+
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 7))
+        harness.textView.copy(nil)
+        #expect(pasteboard.onlyFlavors == [.string])
+        #expect(pasteboard.string(forType: .string) == "**two**")
+        #expect(harness.textView.string == "one **two** three")
+    }
+
+    @Test func copyWithNoSelectionDoesNothingAndIsDisabled() {
+        let pasteboard = NSPasteboard(name: .init("SkinnyDipTests.native.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        let harness = NativeEditorHarness(text: "one **two** three")
+        defer { harness.teardown() }
+        harness.textView.pasteboard = pasteboard
+        MacClipboard(pasteboard: pasteboard).write(plainText: "before")
+
+        harness.textView.setSelectedRange(NSRange(location: 3, length: 0))
+        harness.textView.copy(nil)
+        #expect(pasteboard.string(forType: .string) == "before")
+
+        let copyItem = NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        #expect(!harness.textView.validateUserInterfaceItem(copyItem))
+        harness.textView.setSelectedRange(NSRange(location: 0, length: 3))
+        #expect(harness.textView.validateUserInterfaceItem(copyItem))
+    }
+
+    @Test func cutWritesPlainTextAndUndoesInOneStep() {
+        let pasteboard = NSPasteboard(name: .init("SkinnyDipTests.native.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        let text = "first\nsecond **line**\nthird"
+        let harness = NativeEditorHarness(text: text)
+        defer { harness.teardown() }
+        harness.textView.pasteboard = pasteboard
+
+        harness.textView.setSelectedRange((text as NSString).range(of: "second **line**\n"))
+        harness.event { harness.textView.cut(nil) }
+        #expect(harness.textView.string == "first\nthird")
+        #expect(pasteboard.onlyFlavors == [.string])
+        #expect(pasteboard.string(forType: .string) == "second **line**\n")
+
+        // Pasting it back arrives unchanged; one undo removes the paste, one more restores the cut.
+        harness.event { harness.textView.paste(nil) }
+        #expect(harness.textView.string == text)
+        harness.textView.undoManager?.undo()
+        #expect(harness.textView.string == "first\nthird")
+        harness.textView.undoManager?.undo()
+        #expect(harness.textView.string == text)
+    }
+
+    /// The context menu's Copy is the plain Copy, followed by Copy as Rich Text and Copy as HTML.
+    @Test func contextMenuOffersPlainCopyRichTextAndHTML() throws {
+        let harness = NativeEditorHarness(text: "one **two** three")
+        defer { harness.teardown() }
+        harness.textView.setSelectedRange(NSRange(location: 4, length: 7))
+        let event = try #require(NSEvent.mouseEvent(
+            with: .rightMouseDown, location: NSPoint(x: 20, y: 20), modifierFlags: [], timestamp: 0,
+            windowNumber: harness.textView.window?.windowNumber ?? 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
+        ))
+        let menu = try #require(harness.textView.menu(for: event))
+        let titles = menu.items.map(\.title)
+        let copyIndex = try #require(titles.firstIndex(of: "Copy"))
+        #expect(Array(titles[copyIndex...].prefix(3)) == ["Copy", "Copy as Rich Text", "Copy as HTML"])
+        #expect(!titles.contains("Copy as Markdown"))
+    }
+
     @Test func viewportReportsTopLineAfterScroll() async throws {
         let text = (1...300).map { "Line \($0)" }.joined(separator: "\n")
         let harness = NativeEditorHarness(text: text)

@@ -58,8 +58,8 @@ struct CopySplitButton: View {
         let confirming = confirmation != nil
         HStack(spacing: 0) {
             Button(action: copyRichText) {
-                // A narrow Preview drops the ⌘C hint, then the long label,
-                // rather than truncating to "Copy as… ⌘C".
+                // A narrow Preview drops the ⇧⌘C hint, then the long label,
+                // rather than truncating to "Copy as… ⇧⌘C".
                 ViewThatFits(in: .horizontal) {
                     label(confirmation ?? (selection ? "Copy Selection" : "Copy as Rich Text"), shortcut: confirmation == nil)
                     label(confirmation ?? (selection ? "Copy Selection" : "Copy as Rich Text"), shortcut: false)
@@ -71,15 +71,18 @@ struct CopySplitButton: View {
             }
             .buttonStyle(.plain)
             .disabled(empty)
-            .help(selection ? "Copy the selection as rich text (⌘C)" : "Copy the whole document as rich text (⌘C)")
+            .help(selection ? "Copy the selection as rich text (⇧⌘C)" : "Copy the whole document as rich text (⇧⌘C)")
             .accessibilityLabel(confirmation ?? (selection ? "Copy Selection" : "Copy as Rich Text"))
             Rectangle()
                 .fill(Color(theme.onAccent).opacity(theme.appearance == .light ? 0.35 : 0.25))
                 .frame(width: metrics.borderWidth, height: metrics.copyHeight)
             Menu {
+                // The shortcuts are shown only: the Edit menu owns them.
                 Button("Copy as Rich Text") { copyRichText() }
+                    .keyboardShortcut("c", modifiers: [.command, .shift])
                 Button("Copy as Markdown") { copyMarkdown() }
                 Button("Copy as HTML") { copyHTML() }
+                    .keyboardShortcut("c", modifiers: [.command, .option])
             } label: {
                 Image(systemName: "chevron.down")
                     .font(.system(size: metrics.captionFont, weight: .semibold))
@@ -119,7 +122,7 @@ struct CopySplitButton: View {
                 .lineLimit(1)
                 .fixedSize()
             if shortcut {
-                Text("⌘C")
+                Text("⇧⌘C")
                     .opacity(0.7)
                     .fixedSize()
             }

@@ -15,6 +15,8 @@ struct PreviewView: NSViewRepresentable {
     var scrollSync: Bool
     var syncActive: Bool
     var viewport: EditorViewport
+    /// Nil while the Preview doesn't have focus, otherwise whether it has a selection.
+    var onCopyStateChange: ((Bool?) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -22,6 +24,7 @@ struct PreviewView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> PreviewWebView {
         let configuration = WKWebViewConfiguration()
+        configuration.userContentController.add(context.coordinator, name: "previewSelection")
         let webView = PreviewWebView(
             frame: NSRect(x: 0, y: 0, width: 640, height: 480),
             configuration: configuration
@@ -41,6 +44,7 @@ struct PreviewView: NSViewRepresentable {
     func updateNSView(_ webView: PreviewWebView, context: Context) {
         webView.markdown = markdown
         webView.documentID = documentID
+        webView.onCopyStateChange = onCopyStateChange
         context.coordinator.parentHTML = html
         context.coordinator.themeVars = themeVars
         context.coordinator.zoom = zoom
@@ -59,7 +63,7 @@ struct PreviewView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         weak var webView: PreviewWebView?
         var isReady = false
         var lastHTML: String?
@@ -83,6 +87,11 @@ struct PreviewView: NSViewRepresentable {
                 await pushChrome()
                 await pushHTML(parentHTML)
             }
+        }
+
+        func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == "previewSelection", let hasSelection = message.body as? Bool else { return }
+            webView?.pageSelectionChanged(hasSelection)
         }
 
         func pushChrome() async {
@@ -162,9 +171,11 @@ struct PreviewView: NSViewRepresentable {
     }
 }
 
-/// ⌘C copies through CopyWriter, never WebKit's themed HTML: the Preview selection
-/// mapped back to its Markdown Source (`PreviewSelection`), or the whole document
-/// when nothing is selected.
+/// Copies through CopyWriter, never WebKit's themed HTML, with the Editor's keys
+/// (ADR-0011). A selection maps back to the Markdown Source of the blocks it
+/// touches (`PreviewSelection`). ⌘C copies that Markdown as plain text and does
+/// nothing with no selection; ⌘⇧C copies it as rich text and ⌥⌘C as HTML, both
+/// falling back to the whole document when nothing is selected.
 final class PreviewWebView: WKWebView {
     override var isOpaque: Bool { false }
 
@@ -177,22 +188,78 @@ final class PreviewWebView: WKWebView {
 
     var markdown = ""
     var documentID: UUID?
+    /// Tests point this at a private pasteboard.
+    var pasteboard: NSPasteboard = .general
+    /// Nil while the Preview doesn't have focus, otherwise whether the page has a
+    /// selection. Feeds the Edit menu's Copy state.
+    var onCopyStateChange: ((Bool?) -> Void)?
+    private var pageHasSelection = false
+
+    /// The Preview in the key window that has keyboard focus, if any.
+    static func focused() -> PreviewWebView? {
+        var view = NSApp.keyWindow?.firstResponder as? NSView
+        while let current = view {
+            if let preview = current as? PreviewWebView { return preview }
+            view = current.superview
+        }
+        return nil
+    }
+
+    private var isFocused: Bool {
+        guard let responder = window?.firstResponder as? NSView else { return false }
+        return responder.isDescendant(of: self)
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { onCopyStateChange?(pageHasSelection) }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { onCopyStateChange?(nil) }
+        return resigned
+    }
+
+    /// Hiding the Preview Card takes it out of the window without resigning.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil { onCopyStateChange?(nil) }
+    }
+
+    /// The page reports `selectionchange` through the `previewSelection` message handler.
+    func pageSelectionChanged(_ hasSelection: Bool) {
+        pageHasSelection = hasSelection
+        if isFocused { onCopyStateChange?(hasSelection) }
+    }
 
     @objc func copy(_ sender: Any?) {
-        copySelection(CopyWriter.writeRichText)
+        copySelection(.plain)
+    }
+
+    @objc func skinnyDipCopyRichText(_ sender: Any?) {
+        copySelection(.richText)
     }
 
     /// Reads the selection from the page, then writes with the Markdown and document
     /// captured now, so a render landing in between can't change what is copied.
-    private func copySelection(_ write: @escaping @MainActor (String, Range<String.Index>?, UUID?) -> Void) {
-        let markdown = markdown, documentID = documentID
-        Task { @MainActor in
-            write(markdown, await selectedSourceRange(in: markdown), documentID)
+    @discardableResult
+    func copySelection(_ command: CopyCommand) -> Task<Void, Never> {
+        let markdown = markdown, documentID = documentID, pasteboard = pasteboard
+        return Task { @MainActor in
+            let selection = await selectedSourceRange(in: markdown)
+            CopyWriter.write(
+                command,
+                markdown: markdown,
+                selection: selection,
+                documentID: documentID,
+                clipboard: MacClipboard(pasteboard: pasteboard)
+            )
         }
     }
 
-    /// Nil, so the whole document is copied, when nothing is selected or the page
-    /// can't be read.
+    /// Nil when nothing is selected or the page can't be read.
     func selectedSourceRange(in markdown: String) async -> Range<String.Index>? {
         guard let lines = try? await callAsyncJavaScript("return selectedSourceLines()", contentWorld: .page) as? [Int],
               lines.count == 2
@@ -204,31 +271,33 @@ final class PreviewWebView: WKWebView {
         if AppKeyboardShortcuts.performMainMenuShortcut(event) {
             return true
         }
-        guard event.type == .keyDown, event.modifierFlags.contains(.command),
+        // Only the focused Preview answers ⌘C; otherwise the Editor's copy runs.
+        guard isFocused, event.type == .keyDown, event.modifierFlags.contains(.command),
               event.charactersIgnoringModifiers?.lowercased() == "c"
         else {
             return super.performKeyEquivalent(with: event)
         }
-        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if flags.contains(.shift) {
-            copySelection(CopyWriter.writeMarkdown)
-            return true
+        // Any other ⌘…C is swallowed so WebKit's styled copy never runs.
+        if let command = AppKeyboardShortcuts.copyCommand(for: event) {
+            copySelection(command)
         }
-        if flags.contains(.option) {
-            copySelection(CopyWriter.writeHTML)
-            return true
-        }
-        copy(nil)
         return true
     }
 
+    /// WebKit's Copy becomes the plain Copy, followed by Copy as Rich Text.
     override func willOpenMenu(_ menu: NSMenu, with event: NSEvent) {
         super.willOpenMenu(menu, with: event)
-        guard let copyIndex = menu.items.firstIndex(where: { isCopyMenuItem($0) }) else { return }
+        guard !menu.items.contains(where: { $0.action == #selector(skinnyDipCopyRichText(_:)) }),
+              let copyIndex = menu.items.firstIndex(where: { isCopyMenuItem($0) })
+        else { return }
         let copyItem = menu.items[copyIndex]
-        copyItem.title = "Copy as Rich Text"
+        copyItem.title = "Copy"
         copyItem.target = self
         copyItem.action = #selector(copy(_:))
+
+        let richItem = NSMenuItem(title: "Copy as Rich Text", action: #selector(skinnyDipCopyRichText(_:)), keyEquivalent: "")
+        richItem.target = self
+        menu.insertItem(richItem, at: copyIndex + 1)
     }
 
     private func isCopyMenuItem(_ item: NSMenuItem) -> Bool {

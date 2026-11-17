@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var canUndo = false
     @State private var canRedo = false
     @State private var hasEditorSelection = false
+    /// Nil while the Preview doesn't have focus, otherwise whether it has a selection.
+    @State private var previewCopyState: Bool?
     @State private var canPasteFromPasteboard = NSPasteboard.general.canPasteFromPasteboard
     @StateObject private var previewState = DocumentPreviewState()
     @StateObject private var editor = EditorController()
@@ -307,7 +309,8 @@ struct ContentView: View {
                 zoom: metrics.zoom,
                 scrollSync: scrollSync,
                 syncActive: showPreview && zoomed == nil,
-                viewport: editor.viewport
+                viewport: editor.viewport,
+                onCopyStateChange: { previewCopyState = $0 }
             )
         } footer: {
             previewFooter
@@ -428,8 +431,9 @@ struct ContentView: View {
 
     private var editorPasteboardMenuState: EditorPasteboardMenuState {
         EditorPasteboardMenuState(
-            canCut: hasEditorSelection,
-            canCopy: hasEditorSelection || !document.source.isEmpty,
+            editorHasSelection: hasEditorSelection,
+            documentIsEmpty: document.source.isEmpty,
+            previewSelection: previewCopyState,
             canPaste: canPasteFromPasteboard
         )
     }

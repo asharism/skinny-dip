@@ -138,6 +138,17 @@
       return [touched[0].line, touched[touched.length - 1].line];
     };
 
+    // Tells Swift whether anything is selected, so Edit › Copy (⌘C) is enabled
+    // only with a selection while the Preview has focus (ADR-0011).
+    let hadSelection = false;
+    document.addEventListener("selectionchange", () => {
+      const selection = window.getSelection();
+      const has = !!selection && selection.rangeCount > 0 && !selection.isCollapsed;
+      if (has === hadSelection) return;
+      hadSelection = has;
+      window.webkit?.messageHandlers?.previewSelection?.postMessage(has);
+    });
+
     function render(html, line, fraction) {
       if (line != null && line !== "") {
         lastLine = Number(line) || 1;
