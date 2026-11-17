@@ -11,14 +11,27 @@ struct EditorBackendKindTests {
         return defaults
     }
 
-    @Test func missingValueIsCodeMirror() {
-        #expect(EditorBackendKind.stored(in: defaults()) == .codeMirror)
+    @Test func missingSettingMeansNative() {
+        #expect(EditorBackendKind.stored(in: defaults()) == .native)
     }
 
-    @Test func unknownValueIsCodeMirror() {
+    @Test func unknownSettingMeansNative() {
         let defaults = defaults()
-        defaults.set("monaco", forKey: EditorBackendKind.defaultsKey)
+        defaults.set("vim", forKey: EditorBackendKind.defaultsKey)
+        #expect(EditorBackendKind.stored(in: defaults) == .native)
+    }
+
+    @Test func storedCodeMirrorIsKept() {
+        let defaults = defaults()
+        defaults.set("codeMirror", forKey: EditorBackendKind.defaultsKey)
         #expect(EditorBackendKind.stored(in: defaults) == .codeMirror)
+    }
+
+    /// ADR-0010 Outcome: native is listed first, CodeMirror is marked legacy.
+    @Test func pickerListsNativeFirstAndCodeMirrorAsLegacy() {
+        #expect(EditorBackendKind.allCases == [.native, .codeMirror])
+        #expect(EditorBackendKind.native.title == "Native")
+        #expect(EditorBackendKind.codeMirror.title == "CodeMirror (legacy)")
     }
 
     @Test func roundTrip() {
