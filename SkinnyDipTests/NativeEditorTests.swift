@@ -87,6 +87,39 @@ struct NativeEditorTests {
         #expect(harness.model.textWrites == 0)
     }
 
+    /// Bold and italic are display-only: they follow the parse, so a run that
+    /// stops being `**strong**` goes back to Regular, and the text never changes.
+    @Test func highlightingSetsBoldAndItalic() throws {
+        let text = "# Head\n\n**bold** and *it* and ***bi*** x\n"
+        let harness = NativeEditorHarness(text: text)
+        defer { harness.teardown() }
+        let storage = try #require(harness.textView.textStorage)
+        func font(at index: Int) -> String? {
+            (storage.attribute(.font, at: index, effectiveRange: nil) as? NSFont)?.fontName
+        }
+
+        harness.coordinator.highlightNow()
+        #expect(font(at: 2) == "CommitMono-Bold")         // H of the heading
+        #expect(font(at: 10) == "CommitMono-Bold")        // b of **bold**
+        #expect(font(at: 22) == "CommitMono-Italic")      // i of *it*
+        #expect(font(at: 33) == "CommitMono-BoldItalic")  // b of ***bi***
+        #expect(font(at: 39) == "CommitMono-Regular")     // plain x
+        #expect(storage.string == text)
+
+        // Break the strong run: its letters go back to Regular.
+        storage.replaceCharacters(in: NSRange(location: 8, length: 2), with: "")
+        harness.coordinator.highlightNow()
+        #expect(font(at: 8) == "CommitMono-Regular")
+    }
+
+    /// Commit Mono reaches the editor only if `ATSApplicationFontsPath` still
+    /// points at the bundled folder; otherwise it falls back to SF Mono silently.
+    @Test func editorUsesBundledCommitMono() {
+        let theme = NativeEditorTheme(vars: [:])
+        #expect(theme.font.fontName == "CommitMono-Regular")
+        #expect(theme.paragraphStyle.minimumLineHeight == (theme.fontSize * 1.8).rounded())
+    }
+
     @Test func copySourceUsesSelection() {
         let harness = NativeEditorHarness(text: "one **two** three")
         defer { harness.teardown() }

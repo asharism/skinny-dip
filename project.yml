@@ -78,6 +78,8 @@ targets:
         UISupportsDocumentBrowser: true
         NSMicrophoneUsageDescription: Skinny uses the microphone so you can dictate into the editor.
         NSSpeechRecognitionUsageDescription: Skinny uses speech recognition for dictation in the editor.
+        # Commit Mono for the native editor; relative to Contents/Resources.
+        ATSApplicationFontsPath: Resources/fonts
         # Sparkle auto-update from GitHub Releases (ADR-0009).
         SUFeedURL: https://github.com/asharism/skinny-dip/releases/latest/download/appcast.xml
         SUPublicEDKey: u/lEp3eAIZaBcZ1HmwcId7frODa1SW0nusbVgh1ScPA=

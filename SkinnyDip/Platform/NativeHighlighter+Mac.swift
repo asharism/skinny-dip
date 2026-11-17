@@ -4,9 +4,10 @@ import MarkdownCore
 
 /// Colors the native editor's Markdown Source from `highlightSpans` (ADR-0010).
 /// Parses off the main thread after a pause in typing, keeps only the latest
-/// generation, and sets only the foreground color, directly on the text
-/// storage, so it never adds undo steps or marks the document edited. The
-/// approach follows Silica's `SyntaxHighlighter` (MIT).
+/// generation, and sets only the foreground color and the font's bold and
+/// italic traits, directly on the text storage, so it never adds undo steps or
+/// marks the document edited. The approach follows Silica's
+/// `SyntaxHighlighter` (MIT).
 @MainActor
 final class NativeHighlighter {
     private weak var textView: NSTextView?
@@ -81,7 +82,28 @@ final class NativeHighlighter {
         for span in spans where NSMaxRange(span.range) <= length {
             storage.addAttribute(.foregroundColor, value: theme.color(for: span.role), range: span.range)
         }
+        // Back to Regular only where a run is styled, so unstyled text isn't laid out again.
+        let regular = theme.font
+        storage.enumerateAttribute(.font, in: NSRange(location: 0, length: length)) { value, run, _ in
+            if (value as? NSFont) != regular { storage.addAttribute(.font, value: regular, range: run) }
+        }
+        for span in spans where NSMaxRange(span.range) <= length {
+            switch span.role {
+            case .heading, .strong: addTraits(bold: true, italic: false, in: span.range, of: storage)
+            case .emphasis: addTraits(bold: false, italic: true, in: span.range, of: storage)
+            default: break
+            }
+        }
         storage.endEditing()
+    }
+
+    /// Adds traits to each run's font, so `***both***` ends up Bold Italic.
+    private func addTraits(bold: Bool, italic: Bool, in range: NSRange, of storage: NSTextStorage) {
+        storage.enumerateAttribute(.font, in: range) { value, run, _ in
+            let traits = (value as? NSFont)?.fontDescriptor.symbolicTraits ?? []
+            let font = theme.font(bold: bold || traits.contains(.bold), italic: italic || traits.contains(.italic))
+            storage.addAttribute(.font, value: font, range: run)
+        }
     }
 }
 #endif
