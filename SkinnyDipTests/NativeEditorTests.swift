@@ -131,7 +131,38 @@ struct NativeEditorTests {
     @Test func editorUsesBundledCommitMono() {
         let theme = NativeEditorTheme(vars: [:])
         #expect(theme.font.fontName == "CommitMono-Regular")
-        #expect(theme.paragraphStyle.minimumLineHeight == (theme.fontSize * 1.8).rounded())
+        #expect(theme.lineHeight == (theme.fontSize * 1.8).rounded())
+    }
+
+    /// Expanded line height should leave the same space above and below the
+    /// font's ascent/descent, including the continuation rows of a paragraph.
+    @Test(arguments: [13.0, 14.0, 20.0, 26.0])
+    func textIsVerticallyCenteredInExpandedLines(fontSize: Double) throws {
+        let harness = NativeEditorHarness(text: "Call out\n" + String(repeating: "exploration words ", count: 12))
+        defer { harness.teardown() }
+        // Exercise the same restyling path used by Zoom and font-size changes.
+        harness.themeVars["--editor-font-size"] = "\(fontSize)px"
+        harness.themeVars["--zoom"] = "\(fontSize / 13)"
+        harness.update()
+        let manager = try #require(harness.textView.textLayoutManager)
+        manager.ensureLayout(for: manager.documentRange)
+        let theme = NativeEditorTheme(vars: harness.themeVars)
+        let font = theme.font
+        var count = 0
+        manager.enumerateTextLayoutFragments(from: manager.documentRange.location, options: [.ensuresLayout]) { fragment in
+            for line in fragment.textLineFragments where line.characterRange.length > 0 {
+                let offset = line.attributedString.attribute(.baselineOffset, at: line.characterRange.location, effectiveRange: nil) as? CGFloat ?? 0
+                let fontCenter = line.typographicBounds.minY + line.glyphOrigin.y - offset - (font.ascender + font.descender) / 2
+                #expect(abs(fontCenter - line.typographicBounds.midY) < 0.6,
+                        "font center \(fontCenter), row center \(line.typographicBounds.midY), baseline \(line.glyphOrigin.y)")
+                #expect(abs(line.typographicBounds.height - theme.lineHeight) < 0.6)
+                count += 1
+            }
+            return true
+        }
+        #expect(count >= 3)
+        #expect(harness.textView.undoManager?.canUndo == false)
+        #expect(harness.model.textWrites == 0)
     }
 
     @Test func copySourceUsesSelection() {
@@ -327,7 +358,7 @@ struct NativeEditorTests {
         let rows = harness.coordinator.gutterRows(in: textView.bounds, textView: textView)
         // The wrapped paragraph gets one number, and the empty last line is numbered.
         #expect(rows.map(\.line) == [1, 2, 3, 4])
-        let lineHeight = NativeEditorTheme(vars: harness.themeVars).paragraphStyle.minimumLineHeight
+        let lineHeight = NativeEditorTheme(vars: harness.themeVars).lineHeight
         #expect(rows.allSatisfy { abs($0.rect.height - lineHeight) < 1 })
         #expect(rows[2].rect.minY - rows[1].rect.minY > lineHeight * 3)
         #expect(rows[3].rect.minY > rows[2].rect.minY)

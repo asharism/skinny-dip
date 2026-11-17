@@ -193,6 +193,7 @@ struct NativeEditorView: NSViewRepresentable {
                     .font: theme.font,
                     .foregroundColor: theme.muted,
                     .paragraphStyle: theme.paragraphStyle,
+                    .baselineOffset: theme.baselineOffset,
                 ]),
                 forKey: "placeholderAttributedString"
             )
