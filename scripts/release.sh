@@ -98,6 +98,17 @@ quiet_xcodebuild() {
 step "Generating the Xcode project"
 xcodegen generate --quiet
 
+step "Checking the Sparkle signing key"
+if [[ ! -x "$SPARKLE_BIN/generate_keys" ]]; then
+  quiet_xcodebuild -resolvePackageDependencies -scheme "$SCHEME" \
+    -derivedDataPath "$ROOT/.build/xcode" -quiet
+fi
+PUBLIC_KEY="$("$SPARKLE_BIN/generate_keys" -p)" \
+  || die "Sparkle signing key unavailable; restore the original key with: $SPARKLE_BIN/generate_keys -f /path/to/key (do not generate a new key)"
+EXPECTED_PUBLIC_KEY="$(/usr/libexec/PlistBuddy -c 'Print SUPublicEDKey' "$ROOT/SkinnyDip/Info.plist")"
+[[ "$PUBLIC_KEY" == "$EXPECTED_PUBLIC_KEY" ]] \
+  || die "Sparkle signing key does not match SUPublicEDKey; restore the original key before releasing"
+
 if [[ $SKIP_TESTS == 0 ]]; then
   step "Running tests"
   swift test --package-path Packages/MarkdownCore --quiet
