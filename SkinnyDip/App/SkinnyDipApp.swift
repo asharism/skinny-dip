@@ -70,7 +70,7 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
                 UserDefaults.standard.set(next.value, forKey: "uiZoom")
                 return nil
             }
-            // The editor web view claims ⌘W and never closes the tab.
+            // ⌘W closes the Tab through `closeDocumentWindow`, which saves Scratch Documents first.
             if flags == .command, characters == "w",
                let window = NSApp.keyWindow, !(window is NSPanel) {
                 window.closeDocumentWindow()

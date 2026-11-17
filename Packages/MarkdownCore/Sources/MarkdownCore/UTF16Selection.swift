@@ -1,4 +1,4 @@
-/// Maps UTF-16 code-unit offsets from the CodeMirror bridge into Swift `String.Index` ranges.
+/// Maps UTF-16 code-unit offsets (`NSRange`) into Swift `String.Index` ranges.
 public enum UTF16Selection {
     /// Converts `from`..`to` UTF-16 offsets (inclusive start, exclusive end) into a range in `string`.
     public static func range(in string: String, from: Int, to: Int) -> Range<String.Index>? {

@@ -1,5 +1,7 @@
 # CodeMirror 6 in a web view is the Mac editor
 
+_Superseded by ADR-0010: the native `NSTextView` editor replaced CodeMirror, which was removed on 2026-11-17._
+
 The Mac editor is CodeMirror 6 running in a `WKWebView`, chosen over Apple's `NSTextView` and STTextView after building all three as kept evaluation apps (`Spikes/Editors/`, issue #1). It is the only candidate with full Sublime-style multi-cursor (⌘D, add cursor above/below, ⌘-click) under a permissive (MIT) license; `NSTextView` cannot hold multiple empty carets, and STTextView needed our own key wiring for most of those gestures and is GPL-3.0 or paid. In hand testing it felt fastest on the 10,000-line document.
 
 ## Consequences

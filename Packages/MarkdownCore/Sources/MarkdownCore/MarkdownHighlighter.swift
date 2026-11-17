@@ -1,7 +1,7 @@
 import Foundation
 import Markdown
 
-/// What a highlighted run of Markdown Source is, for the native Editor Backend
+/// What a highlighted run of Markdown Source is, for the native editor
 /// (ADR-0010). Each role maps to a `ResolvedTheme` color; `strong` uses `emphasis`.
 public enum HighlightRole: String, Sendable, CaseIterable {
     case heading, marker, emphasis, strong, link, code, quote

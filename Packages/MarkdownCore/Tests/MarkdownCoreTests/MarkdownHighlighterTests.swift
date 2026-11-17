@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import MarkdownCore
 
-/// Native Editor Backend highlighting (ADR-0010): spans come from swift-markdown's
+/// Native editor highlighting (ADR-0010): spans come from swift-markdown's
 /// source ranges, in UTF-16 offsets, so they index an `NSTextStorage` directly.
 struct MarkdownHighlighterTests {
     /// The source text each span of `role` covers, in order.

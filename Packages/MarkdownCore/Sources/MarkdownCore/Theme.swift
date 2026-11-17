@@ -256,7 +256,7 @@ public struct ResolvedTheme: Equatable, Sendable {
         self.shadows = shadows
     }
 
-    /// CSS variables both web views receive. Keys are exact.
+    /// CSS variables the Preview and the native editor receive. Keys are exact.
     public func cssVariables() -> [String: String] {
         [
             "--fg": foreground.css,

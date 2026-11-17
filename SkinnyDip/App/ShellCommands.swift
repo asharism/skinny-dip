@@ -114,15 +114,9 @@ struct ViewCommands: Commands {
         }
     }
 
-    /// The gutter is native-editor only (ADR-0010 Outcome): CodeMirror shows it disabled.
-    @ViewBuilder private var lineNumbersItem: some View {
-        if EditorBackendKind.current == .native {
-            Button(showsLineNumbers ? "Hide Line Numbers" : "Show Line Numbers") { showsLineNumbers.toggle() }
-                .keyboardShortcut("l", modifiers: [.command, .option])
-        } else {
-            Button("Line Numbers (Native editor only)") {}
-                .disabled(true)
-        }
+    private var lineNumbersItem: some View {
+        Button(showsLineNumbers ? "Hide Line Numbers" : "Show Line Numbers") { showsLineNumbers.toggle() }
+            .keyboardShortcut("l", modifiers: [.command, .option])
     }
 
     private var themeChoice: Binding<String> {
