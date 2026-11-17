@@ -11,6 +11,7 @@ Until now ⌘C was Copy as Rich Text, because pasting into Outlook and Teams is 
 - **Same keys in both Cards.** In the Preview, a selection still widens to the Markdown Source of the blocks it touches (`PreviewSelection`); ⌘C copies that Markdown as plain text and ⌘⇧C copies it as rich text. We never use WebKit's styled copy.
 - **⌘C does nothing with no selection.** It's the standard Copy, and copying the whole file on a reflexive ⌘C would silently overwrite the clipboard. The whole-document fallback stays on ⌘⇧C and ⌥⌘C, where copying the whole note is the point.
 - **Copy as Markdown leaves the Edit menu.** ⌘C now does its job for a selection. It stays in the Copy split button's ▾ menu, with no shortcut shown, for copying the whole document's source.
+- **⌘X Cut follows ⌘C**: it writes the selected Markdown as plain text only, then deletes it.
 - **The Copy split button stays rich.** Clicking it is still Copy as Rich Text, so the main workflow is one click or ⌘⇧C.
 - The change sits above the Editor Backend seam, so both backends get it. Pasting our own copy back into Skinny still uses the Markdown flavor.
 
