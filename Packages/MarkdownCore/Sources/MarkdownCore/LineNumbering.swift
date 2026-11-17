@@ -1,7 +1,7 @@
 import Foundation
 
 /// Logical lines of the Markdown Source in UTF-16 offsets, the units `NSTextView`
-/// and CodeMirror report. A line ends at `\n`, `\r\n` or `\r`; a trailing break
+/// reports. A line ends at `\n`, `\r\n` or `\r`; a trailing break
 /// adds an empty last line, and an empty document has one line. The native
 /// editor's line-number gutter and scroll sync both count lines this way.
 public struct LineNumbering: Equatable, Sendable {

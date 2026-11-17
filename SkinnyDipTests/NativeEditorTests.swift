@@ -5,8 +5,8 @@ import SwiftUI
 import Testing
 @testable import SkinnyDip
 
-/// The native Editor Backend (ADR-0010, #64), hosted in a real window like the
-/// `EditorNativeTextTests` harness, with SwiftUI bindings into a plain model.
+/// The native editor (ADR-0010, #64), hosted in a real window with SwiftUI
+/// bindings into a plain model.
 @MainActor
 struct NativeEditorTests {
     @Test func textRoundTrip() async throws {
@@ -70,6 +70,20 @@ struct NativeEditorTests {
 
         harness.event { harness.textView.insertMarkdownFromPasteboard(plain: true) }
         #expect(harness.textView.string == "Intro\nTitle\nBold item")
+    }
+
+    /// Pasting Skinny's own Copy as Rich Text back in takes the Markdown flavor,
+    /// so the source comes back exactly, not a lossy HTML round trip.
+    @Test func pastingOurOwnCopyInsertsItsMarkdownSource() {
+        let pasteboard = NSPasteboard(name: .init("SkinnyDipTests.native.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        let harness = NativeEditorHarness(text: "")
+        defer { harness.teardown() }
+        harness.textView.pasteboard = pasteboard
+
+        MacClipboard(pasteboard: pasteboard).write(CopyAsRichText.payload(for: "# Notes\n\n* starred_item\n"))
+        harness.event { harness.textView.insertMarkdownFromPasteboard(plain: false) }
+        #expect(harness.textView.string == "# Notes\n\n* starred_item\n")
     }
 
     @Test func highlightingAddsNoUndoAndNoEdit() async throws {

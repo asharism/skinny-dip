@@ -3,7 +3,6 @@ import SwiftUI
 import MarkdownCore
 
 /// The ⌘, window. General keeps the render toggles. Appearance picks themes and Zoom.
-/// Advanced picks the Editor Backend.
 struct SettingsView: View {
     @Environment(\.metrics) private var metrics
     @EnvironmentObject private var themes: ThemeStore
@@ -24,8 +23,6 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
             appearance
                 .tabItem { Label("Appearance", systemImage: "paintpalette") }
-            AdvancedSettingsView()
-                .tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }
         }
         .frame(width: metrics.settingsWidth)
         .padding(metrics.settingsPadding)
@@ -46,10 +43,7 @@ struct SettingsView: View {
             Text("Off opens documents with just the Editor. ⇧⌘P shows or hides the Preview in the current Tab.")
                 .font(.caption).foregroundStyle(.secondary)
             Toggle("Show line numbers", isOn: $showsLineNumbers)
-                .disabled(EditorBackendKind.current != .native)
-            Text(EditorBackendKind.current == .native
-                 ? "Numbers each line of the Markdown in the Editor. ⌥⌘L shows or hides them."
-                 : "Only in the native editor. Pick it in Advanced.")
+            Text("Numbers each line of the Markdown in the Editor. ⌥⌘L shows or hides them.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

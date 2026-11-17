@@ -7,7 +7,7 @@
 #   scripts/soak.sh <typing minutes> [KEY=VALUE ...] [options]
 #
 #   KEY=VALUE            passed to the app, e.g. SKINNYDIP_SOAK_NO_PREVIEW=1,
-#                        SKINNYDIP_SOAK_NO_HISTORY_EXPORT=1, SKINNYDIP_SOAK_TABS=3
+#                        SKINNYDIP_SOAK_TABS=3
 #   --idle <minutes>     idle phase after typing (default 10)
 #   --interval <secs>    sampling interval (default 30)
 #   --bundle-id <id>     default com.hitesh.SkinnyDipAgent; never com.hitesh.SkinnyDip

@@ -11,7 +11,7 @@ struct CopySource {
     var documentID: UUID?
 }
 
-/// Undo/redo menu state for the CodeMirror editor (Edit ▸ Undo/Redo).
+/// Undo/redo menu state for the editor (Edit ▸ Undo/Redo).
 struct EditorHistoryMenuState {
     var canUndo: Bool
     var canRedo: Bool

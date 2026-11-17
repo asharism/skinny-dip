@@ -25,7 +25,6 @@ final class ScratchSession: ObservableObject {
     private var openDocuments: [ObjectIdentifier: OpenDocument] = [:]
     private var preparedCloses = Set<ObjectIdentifier>()
     private var didInstallHook = false
-    private var loggedOversizedHistory = false
 
     struct Queued {
         var id: UUID
@@ -37,7 +36,6 @@ final class ScratchSession: ObservableObject {
     struct Live {
         var text: String
         var createdAt: Date
-        var undoHistory: String?
         var controller: EditorController?
         weak var window: NSWindow?
     }
@@ -133,8 +131,6 @@ final class ScratchSession: ObservableObject {
             return MarkdownDocument(
                 source: next.text,
                 scratchID: next.id,
-                undoHistory: next.meta.undoHistory,
-                undoHistoryBackend: next.meta.undoHistoryBackend,
                 pinnedTitle: next.pinnedTitle,
                 createdAt: next.meta.createdAt
             )
@@ -157,7 +153,7 @@ final class ScratchSession: ObservableObject {
             window.isRestorable = true
             return
         }
-        var live = lives[scratchID] ?? Live(text: text, createdAt: createdAt, undoHistory: nil, controller: controller, window: window)
+        var live = lives[scratchID] ?? Live(text: text, createdAt: createdAt, controller: controller, window: window)
         live.text = text
         live.controller = controller
         live.window = window
@@ -181,18 +177,14 @@ final class ScratchSession: ObservableObject {
         unflushed.insert(scratchID)
     }
 
-    func flush(id: UUID, history: String?) {
-        guard var live = lives[id] else { return }
-        live.undoHistory = capped(history)
-        lives[id] = live
+    func flush(id: UUID) {
+        guard let live = lives[id] else { return }
         let placement = placement(of: live.window)
         let meta = ScratchMeta(
             createdAt: live.createdAt,
             updatedAt: Date(),
             windowIndex: placement.window,
-            tabIndex: placement.tab,
-            undoHistory: live.undoHistory,
-            undoHistoryBackend: ScratchHistory.tag(for: live.undoHistory, backend: .current)
+            tabIndex: placement.tab
         )
         let text = live.text
         let store = store
@@ -206,21 +198,13 @@ final class ScratchSession: ObservableObject {
         let key = ObjectIdentifier(window)
         guard window.tabbingIdentifier == "SkinnyDipDocument" || scratchByWindow[key] != nil else { return }
         guard preparedCloses.insert(key).inserted else { return }
-        if let id = scratchByWindow[key], var live = lives[id] {
-            // Do not export history here. That spins the run loop inside
-            // performClose, and AppKit then abandons the close.
-            if let history = live.undoHistory {
-                live.undoHistory = capped(history)
-                lives[id] = live
-            }
+        if let id = scratchByWindow[key], let live = lives[id] {
             let placement = placement(of: window)
             let meta = ScratchMeta(
                 createdAt: live.createdAt,
                 updatedAt: Date(),
                 windowIndex: placement.window,
-                tabIndex: placement.tab,
-                undoHistory: live.undoHistory,
-                undoHistoryBackend: ScratchHistory.tag(for: live.undoHistory, backend: .current)
+                tabIndex: placement.tab
             )
             try? store.save(id: id, text: live.text, meta: meta)
             (window.windowController?.document as? NSDocument)?.updateChangeCount(.changeCleared)
@@ -255,26 +239,18 @@ final class ScratchSession: ObservableObject {
         return .terminateNow
     }
 
-    /// Writes every Scratch Document with its placement and history, the way
-    /// quit does. Switching Editor Backend calls it before the relaunch so the
-    /// new instance finds everything on disk.
+    /// Writes every Scratch Document with its placement, the way quit does.
     func saveAll() {
-        for (id, var live) in lives {
-            if let history = live.controller?.exportHistoryBlocking() {
-                live.undoHistory = capped(history)
-            }
+        for (id, live) in lives {
             let placement = placement(of: live.window)
             let meta = ScratchMeta(
                 createdAt: live.createdAt,
                 updatedAt: Date(),
                 windowIndex: placement.window,
-                tabIndex: placement.tab,
-                undoHistory: live.undoHistory,
-                undoHistoryBackend: ScratchHistory.tag(for: live.undoHistory, backend: .current)
+                tabIndex: placement.tab
             )
             try? store.save(id: id, text: live.text, meta: meta)
             (live.window?.windowController?.document as? NSDocument)?.updateChangeCount(.changeCleared)
-            lives[id] = live
         }
     }
 
@@ -348,18 +324,6 @@ final class ScratchSession: ObservableObject {
 
     func refreshClosed() {
         recentlyClosed = (try? store.recentlyClosed(limit: 20)) ?? []
-    }
-
-    private func capped(_ history: String?) -> String? {
-        guard let history else { return nil }
-        if history.utf8.count > 8 * 1024 * 1024 {
-            if !loggedOversizedHistory {
-                loggedOversizedHistory = true
-                fputs("[SkinnyDip] scratch undo history exceeds 8 MB; saving text only\n", stderr)
-            }
-            return nil
-        }
-        return history
     }
 
     private func placement(of window: NSWindow?) -> (window: Int, tab: Int) {

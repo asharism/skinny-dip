@@ -1,33 +1,27 @@
 import Foundation
 
-/// Sidecar for a Scratch Document. `undoHistory` is the Editor Backend's own
-/// history, carried untouched by the store (ADR-0007); `undoHistoryBackend`
-/// names the backend that wrote it, and `nil` means CodeMirror (ADR-0010).
+/// Sidecar for a Scratch Document: dates and window placement (ADR-0007).
+/// Older sidecars may still hold `undoHistory` keys from the removed
+/// CodeMirror editor; decoding ignores them.
 public struct ScratchMeta: Codable, Equatable, Sendable {
     public var createdAt: Date
     public var updatedAt: Date
     public var closedAt: Date?
     public var windowIndex: Int
     public var tabIndex: Int
-    public var undoHistory: String?
-    public var undoHistoryBackend: String?
 
     public init(
         createdAt: Date,
         updatedAt: Date,
         closedAt: Date? = nil,
         windowIndex: Int,
-        tabIndex: Int,
-        undoHistory: String? = nil,
-        undoHistoryBackend: String? = nil
+        tabIndex: Int
     ) {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.closedAt = closedAt
         self.windowIndex = windowIndex
         self.tabIndex = tabIndex
-        self.undoHistory = undoHistory
-        self.undoHistoryBackend = undoHistoryBackend
     }
 
     public static func recovered(now: Date) -> ScratchMeta {

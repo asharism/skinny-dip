@@ -7,22 +7,9 @@ import Testing
 
 /// Edit menu Undo/Redo are sent down the responder chain by selector. A
 /// misspelled selector compiles but nothing answers it, so the menu item does
-/// nothing (⌘Z still works because CodeMirror handles the key itself).
+/// nothing.
 @MainActor
 struct MenuRoutingTests {
-    @Test func editorWebViewIsAnEditorResponder() {
-        let webView: AnyObject = EditorWebView(frame: .zero)
-        #expect(webView is any EditorResponder)
-    }
-
-    @Test func editorAnswersMenuUndo() {
-        #expect(EditorWebView.instancesRespond(to: CopyCommands.undoSelector))
-    }
-
-    @Test func editorAnswersMenuRedo() {
-        #expect(EditorWebView.instancesRespond(to: CopyCommands.redoSelector))
-    }
-
     @Test func nativeTextViewIsAnEditorResponder() {
         let textView: AnyObject = NativeEditorTextView(usingTextLayoutManager: true)
         #expect(textView is any EditorResponder)
@@ -127,25 +114,6 @@ struct MenuRoutingTests {
             _ = window.performKeyEquivalent(with: event)
         }
         #expect(fired == ["control"])
-    }
-
-    /// WebKit's context-menu Copy becomes the plain Copy in the legacy CodeMirror
-    /// editor, followed by Copy as Rich Text and Copy as HTML.
-    @Test func codeMirrorContextMenuOffersPlainCopyRichTextAndHTML() throws {
-        let webView = EditorWebView(frame: .zero)
-        let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: ""))
-        let event = try #require(NSEvent.mouseEvent(
-            with: .rightMouseDown, location: .zero, modifierFlags: [], timestamp: 0,
-            windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1
-        ))
-        webView.willOpenMenu(menu, with: event)
-        let titles = menu.items.map(\.title)
-        let copyIndex = try #require(titles.firstIndex(of: "Copy"))
-        #expect(Array(titles[copyIndex...].prefix(3)) == ["Copy", "Copy as Rich Text", "Copy as HTML"])
-        #expect(!titles.contains("Copy as Markdown"))
-        // No editor selection: the plain Copy is disabled.
-        #expect(menu.items[copyIndex].isEnabled == false)
     }
 
     @Test func previewContextMenuOffersPlainCopyThenRichText() throws {

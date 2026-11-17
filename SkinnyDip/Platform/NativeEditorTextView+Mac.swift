@@ -2,9 +2,9 @@
 import AppKit
 import MarkdownCore
 
-/// The native Editor Backend's text view: AppKit `NSTextView` on TextKit 2
+/// The editor's text view: AppKit `NSTextView` on TextKit 2
 /// (ADR-0010). Spell check, autocorrect, dictation and Writing Tools come from
-/// AppKit. Copy and paste go through MarkdownCore like the CodeMirror backend:
+/// AppKit. Copy and paste go through MarkdownCore:
 /// never AppKit's own RTF copy, and ⌘V is Paste as Markdown.
 final class NativeEditorTextView: NSTextView, EditorResponder {
     weak var editorCoordinator: NativeEditorView.Coordinator?
@@ -14,7 +14,7 @@ final class NativeEditorTextView: NSTextView, EditorResponder {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         guard let window else { return }
-        // A new Tab starts with the caret in the editor, as CodeMirror's does.
+        // A new Tab starts with the caret in the editor.
         DispatchQueue.main.async { [weak self, weak window] in
             guard let self, let window, self.window === window else { return }
             if window.firstResponder === window || window.firstResponder == nil {
@@ -145,7 +145,7 @@ final class NativeEditorTextView: NSTextView, EditorResponder {
     }
 
     /// The context menu's Copy stays the plain Copy, followed by Copy as Rich Text
-    /// and Copy as HTML, as in the CodeMirror backend (ADR-0011).
+    /// and Copy as HTML (ADR-0011).
     private func customizeCopyMenu(_ menu: NSMenu) {
         guard !menu.items.contains(where: { $0.action == #selector(skinnyDipCopyRichText(_:)) }),
               let copyIndex = menu.items.firstIndex(where: { $0.action == #selector(copy(_:)) })
