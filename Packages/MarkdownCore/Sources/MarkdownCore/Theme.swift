@@ -273,6 +273,8 @@ public struct ResolvedTheme: Equatable, Sendable {
             "--border2": border2.css,
             "--code-bg": codeBg.css,
             "--current-line": currentLine.css,
+            "--gutter-bg": strip.css,
+            "--gutter-border": border2.css,
             "--cursor": cursor.css,
         ]
     }

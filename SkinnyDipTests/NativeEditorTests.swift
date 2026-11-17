@@ -318,9 +318,13 @@ struct NativeEditorTests {
         let theme = NativeEditorTheme(vars: harness.themeVars)
         #expect(harness.coordinator.gutterWidth > 0)
         #expect(harness.textView.textContainerOrigin.x > theme.inlinePadding)
-        // The gutter replaces the inline padding: the text moves right by the digits only.
-        let digits = harness.textView.textContainerOrigin.x - theme.inlinePadding
-        #expect(digits < theme.fontSize * 2)
+        // A separate column (strip tint, border2 hairline), then the gap, then the text.
+        let gutter = harness.coordinator.gutter
+        #expect(gutter.columnWidth > 0)
+        #expect(abs(harness.textView.textContainerOrigin.x - gutter.columnWidth - 8) < 0.01, "\(harness.textView.textContainerOrigin.x) \(gutter.columnWidth)")
+        #expect(gutter.numberRight < gutter.columnWidth - NativeEditorGutter.hairline)
+        #expect(theme.gutterBackground == NativeEditorTheme.color(css: harness.themeVars["--gutter-bg"] ?? ""))
+        #expect(theme.gutterBorder == NativeEditorTheme.color(css: harness.themeVars["--gutter-border"] ?? ""))
 
         harness.model.showsLineNumbers = false
         harness.update()

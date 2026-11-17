@@ -10,9 +10,9 @@ import MarkdownCore
 /// TextKit 2. An `NSRulerView` makes `NSTextView` manage ruler markers and sits
 /// outside the clip view, so it would also need its own background.
 ///
-/// Geometry: with the gutter on, the text starts at the inline padding plus the
-/// widest number's digits. The numbers end `gap` before the text, so the gutter
-/// takes the place of the padding instead of adding to it.
+/// Geometry: the gutter is its own column with the `strip` tint and a 1 pt
+/// `border2` hairline on its right edge: a margin, the widest number's digits,
+/// a margin, the hairline. The text starts `gap` after the hairline.
 @MainActor
 struct NativeEditorGutter {
     var isVisible: Bool
@@ -20,15 +20,31 @@ struct NativeEditorGutter {
     /// Digits reserved for the widest number, from `LineNumbering.digits`.
     var digits: Int = 2
 
+    /// Between the hairline and the text.
     var gap: CGFloat { 8 * theme.zoom }
+    /// Either side of the numbers, inside the gutter column.
+    var margin: CGFloat { 8 * theme.zoom }
+    static let hairline: CGFloat = 1
 
     var digitWidth: CGFloat {
         ("0" as NSString).size(withAttributes: [.font: theme.font]).width
     }
 
-    /// Everything left of the text: 0 when hidden.
+    /// The gutter column, up to and including its hairline: 0 when hidden.
+    /// Whole points, so the hairline is crisp and NSTextView's own rounding of
+    /// the inset doesn't move the text off the gap.
+    var columnWidth: CGFloat {
+        isVisible ? (margin + CGFloat(digits) * digitWidth + margin + Self.hairline).rounded(.up) : 0
+    }
+
+    /// Everything left of the text: the column plus the gap, 0 when hidden.
     var width: CGFloat {
-        isVisible ? theme.inlinePadding + CGFloat(digits) * digitWidth : 0
+        isVisible ? columnWidth + gap : 0
+    }
+
+    /// Where the numbers' right edge sits.
+    var numberRight: CGFloat {
+        columnWidth - Self.hairline - margin
     }
 
     /// Where the text container starts. Without the gutter it is today's inline padding.
@@ -61,6 +77,7 @@ struct GutterRow: Equatable {
 extension NativeEditorTextView {
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
+        editorCoordinator?.drawGutterBackground(in: rect)
         editorCoordinator?.drawCurrentLine(in: rect, textView: self)
         editorCoordinator?.drawGutter(in: rect, textView: self)
     }
@@ -134,9 +151,20 @@ extension NativeEditorView.Coordinator {
         return rows
     }
 
+    /// The column's tint, under the current-line band.
+    func drawGutterBackground(in rect: NSRect) {
+        guard gutter.isVisible, rect.minX < gutter.columnWidth else { return }
+        gutter.theme.gutterBackground.setFill()
+        NSRect(x: 0, y: rect.minY, width: gutter.columnWidth, height: rect.height).intersection(rect).fill(using: .sourceOver)
+    }
+
+    /// The hairline (over the band, so it stays unbroken) and the numbers.
     func drawGutter(in rect: NSRect, textView: NSTextView) {
         guard gutter.isVisible, rect.minX < gutter.width else { return }
-        let numberRight = gutter.textOriginX - gutter.gap
+        gutter.theme.gutterBorder.setFill()
+        NSRect(x: gutter.columnWidth - NativeEditorGutter.hairline, y: rect.minY, width: NativeEditorGutter.hairline, height: rect.height)
+            .intersection(rect).fill(using: .sourceOver)
+        let numberRight = gutter.numberRight
         let muted = gutter.attributes(color: gutter.theme.muted)
         let current = gutter.attributes(color: gutter.theme.foreground)
         let currentLine = showsCurrentLine ? currentLineNumber() : nil

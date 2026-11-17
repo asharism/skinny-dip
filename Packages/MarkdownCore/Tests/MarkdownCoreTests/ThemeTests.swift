@@ -129,6 +129,10 @@ struct ThemeTests {
             #expect(theme.currentLine.a > 0, "\(url.lastPathComponent)")
             // Quieter than the selection: a faint tint, not a highlight.
             #expect(theme.currentLine.a < theme.selection.a, "\(url.lastPathComponent)")
+            // The native editor's gutter: the strip tint and a border2 hairline.
+            #expect(variables["--gutter-bg"] == theme.strip.css, "\(url.lastPathComponent)")
+            #expect(variables["--gutter-border"] == theme.border2.css, "\(url.lastPathComponent)")
+            #expect(theme.strip.a > 0 && theme.border2.a > theme.strip.a, "\(url.lastPathComponent)")
         }
     }
 
@@ -137,7 +141,7 @@ struct ThemeTests {
         #expect(Set(variables.keys) == [
             "--fg", "--muted", "--accent", "--selection", "--heading", "--marker",
             "--emphasis", "--link", "--code", "--quote", "--border", "--border2",
-            "--code-bg", "--cursor", "--current-line",
+            "--code-bg", "--cursor", "--current-line", "--gutter-bg", "--gutter-border",
         ])
         #expect(variables["--fg"] == "#2b2b2b")
     }

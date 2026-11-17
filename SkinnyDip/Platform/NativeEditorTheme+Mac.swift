@@ -11,6 +11,9 @@ struct NativeEditorTheme: Equatable {
     var selection: NSColor
     /// The current-line band (#77), `ResolvedTheme.currentLine`.
     var currentLine: NSColor
+    /// The line-number gutter's fill (`strip`) and its right-edge hairline (`border2`).
+    var gutterBackground: NSColor
+    var gutterBorder: NSColor
     var roles: [HighlightRole: NSColor]
     var fontSize: CGFloat
     var inlinePadding: CGFloat
@@ -25,6 +28,8 @@ struct NativeEditorTheme: Equatable {
         cursor = color("--cursor", .controlAccentColor)
         selection = color("--selection", .selectedTextBackgroundColor)
         currentLine = color("--current-line", NSColor.textColor.withAlphaComponent(0.05))
+        gutterBackground = color("--gutter-bg", NSColor.textColor.withAlphaComponent(0.055))
+        gutterBorder = color("--gutter-border", .separatorColor)
         let emphasis = color("--emphasis", foreground)
         roles = [
             .heading: color("--heading", foreground),
