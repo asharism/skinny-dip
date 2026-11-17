@@ -11,6 +11,7 @@ struct SettingsView: View {
     @AppStorage(RenderSettings.bordersTables) private var bordersTables = RenderOptions.default.bordersTables
     @AppStorage(RenderSettings.newlinesAsBreaks) private var newlinesAsBreaks = RenderOptions.default.newlinesAsBreaks
     @AppStorage(PreviewVisibility.inNewDocuments) private var previewInNewDocuments = true
+    @AppStorage(EditorSettings.showsLineNumbers) private var showsLineNumbers = true
     @AppStorage("themeMode") private var themeMode = ThemeSelection.matchSystem
     @AppStorage("themeFixed") private var themeFixed = ThemeSelection.defaultLight
     @AppStorage("themeLight") private var themeLight = ThemeSelection.defaultLight
@@ -43,6 +44,12 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
             Toggle("Show Preview in new documents", isOn: $previewInNewDocuments)
             Text("Off opens documents with just the Editor. ⇧⌘P shows or hides the Preview in the current Tab.")
+                .font(.caption).foregroundStyle(.secondary)
+            Toggle("Show line numbers", isOn: $showsLineNumbers)
+                .disabled(EditorBackendKind.current != .native)
+            Text(EditorBackendKind.current == .native
+                 ? "Numbers each line of the Markdown in the Editor. ⌥⌘L shows or hides them."
+                 : "Only in the native editor. Pick it in Advanced.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

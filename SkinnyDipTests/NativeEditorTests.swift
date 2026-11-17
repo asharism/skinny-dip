@@ -215,6 +215,122 @@ struct NativeEditorTests {
         #expect(textView.writingToolsBehavior == .complete)
         #expect(textView.textLayoutManager != nil)
     }
+
+    // MARK: Line numbers (#76)
+
+    @Test func lineNumberGutterKeepsTextKit2() async throws {
+        var fellBack: [ObjectIdentifier] = []
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSTextView.willSwitchToNSLayoutManagerNotification, object: nil, queue: nil
+        ) { note in
+            if let object = note.object as AnyObject? { fellBack.append(ObjectIdentifier(object)) }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        let text = (1...150).map { "Line \($0) " + String(repeating: "wrap ", count: $0 % 7 == 0 ? 40 : 1) }.joined(separator: "\n")
+        let harness = NativeEditorHarness(text: text)
+        defer { harness.teardown() }
+        let textView: NativeEditorTextView = harness.textView
+
+        // Draw, type, scroll, zoom and toggle: every path the gutter takes.
+        harness.display()
+        harness.event { textView.insertText("\nnew", replacementRange: NSRange(location: 0, length: 0)) }
+        harness.display()
+        harness.coordinator.scrollToLine(120)
+        harness.display()
+        harness.themeVars["--editor-font-size"] = "16.0px"
+        harness.themeVars["--zoom"] = "1.2"
+        harness.update()
+        harness.display()
+        harness.model.showsLineNumbers = false
+        harness.update()
+        harness.display()
+        harness.model.showsLineNumbers = true
+        harness.update()
+        harness.display()
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(textView.textLayoutManager != nil)
+        #expect(!fellBack.contains(ObjectIdentifier(textView)))
+        #expect(fellBack.isEmpty)
+    }
+
+    @Test func gutterWidthGrowsAtHundredLines() {
+        let ninetyNine = (1...99).map { "\($0)" }.joined(separator: "\n")
+        let harness = NativeEditorHarness(text: ninetyNine)
+        defer { harness.teardown() }
+        let narrow = harness.coordinator.gutterWidth
+        let narrowOrigin = harness.textView.textContainerOrigin.x
+        #expect(narrow > 0)
+
+        harness.event { harness.textView.insertText("\n100", replacementRange: NSRange(location: (ninetyNine as NSString).length, length: 0)) }
+        #expect(harness.coordinator.gutterWidth > narrow)
+        #expect(harness.textView.textContainerOrigin.x > narrowOrigin)
+
+        // Back under 100 lines, it narrows again.
+        harness.event { harness.textView.insertText("", replacementRange: NSRange(location: (ninetyNine as NSString).length, length: 4)) }
+        #expect(harness.textView.string == ninetyNine)
+        #expect(harness.coordinator.gutterWidth == narrow)
+    }
+
+    @Test func gutterNumbersLogicalLinesOnly() {
+        let long = String(repeating: "wrapping words ", count: 40)
+        let harness = NativeEditorHarness(text: "short\n\(long)\nend\n")
+        defer { harness.teardown() }
+        let textView: NativeEditorTextView = harness.textView
+        let rows = harness.coordinator.gutterRows(in: textView.bounds, textView: textView)
+        // The wrapped paragraph gets one number, and the empty last line is numbered.
+        #expect(rows.map(\.line) == [1, 2, 3, 4])
+        let lineHeight = NativeEditorTheme(vars: harness.themeVars).paragraphStyle.minimumLineHeight
+        #expect(rows.allSatisfy { abs($0.rect.height - lineHeight) < 1 })
+        #expect(rows[2].rect.minY - rows[1].rect.minY > lineHeight * 3)
+        #expect(rows[3].rect.minY > rows[2].rect.minY)
+
+        let empty = NativeEditorHarness(text: "")
+        defer { empty.teardown() }
+        #expect(empty.coordinator.gutterRows(in: empty.textView.bounds, textView: empty.textView).map(\.line) == [1])
+    }
+
+    @Test func gutterMatchesLinesFarDown() async throws {
+        let text = (1...2000).map { "Line \($0)" }.joined(separator: "\n")
+        let harness = NativeEditorHarness(text: text)
+        defer { harness.teardown() }
+        let textView: NativeEditorTextView = harness.textView
+        harness.coordinator.scrollToLine(1500)
+        let rows = harness.coordinator.gutterRows(in: textView.visibleRect, textView: textView)
+        let first = try #require(rows.first { $0.rect.minY >= textView.visibleRect.minY - 1 })
+        #expect(first.line == 1500)
+        // One number per row, consecutive, with no gaps or repeats.
+        let numbers = rows.map(\.line)
+        #expect(numbers == Array(numbers[0]..<(numbers[0] + numbers.count)))
+        // Scroll sync still reports the same top line, with the gutter on and off.
+        try await harness.waitForController { $0.viewport.topLine == 1500 }
+        #expect(harness.controller.viewport.topLine == 1500)
+        harness.model.showsLineNumbers = false
+        harness.update()
+        harness.coordinator.scrollToLine(1200)
+        try await harness.waitForController { $0.viewport.topLine == 1200 }
+        #expect(harness.controller.viewport.topLine == 1200)
+    }
+
+    @Test func toggleHidesGutter() {
+        let harness = NativeEditorHarness(text: "one\ntwo\nthree")
+        defer { harness.teardown() }
+        let theme = NativeEditorTheme(vars: harness.themeVars)
+        #expect(harness.coordinator.gutterWidth > 0)
+        #expect(harness.textView.textContainerOrigin.x > theme.inlinePadding)
+        // The gutter replaces the inline padding: the text moves right by the digits only.
+        let digits = harness.textView.textContainerOrigin.x - theme.inlinePadding
+        #expect(digits < theme.fontSize * 2)
+
+        harness.model.showsLineNumbers = false
+        harness.update()
+        #expect(harness.coordinator.gutterWidth == 0)
+        #expect(harness.textView.textContainerOrigin == NSPoint(x: theme.inlinePadding, y: theme.insets.top))
+
+        harness.model.showsLineNumbers = true
+        harness.update()
+        #expect(harness.coordinator.gutterWidth > 0)
+    }
 }
 
 @MainActor
@@ -224,6 +340,7 @@ final class NativeEditorModel {
     var canUndo = false
     var canRedo = false
     var hasEditorSelection = false
+    var showsLineNumbers = true
     var textWrites = 0
 
     init(text: String) {
@@ -237,7 +354,7 @@ final class NativeEditorModel {
 final class NativeEditorHarness {
     let model: NativeEditorModel
     let controller = EditorController()
-    let themeVars: [String: String]
+    var themeVars: [String: String]
     private(set) var coordinator: NativeEditorView.Coordinator!
     private(set) var textView: NativeEditorTextView!
     private var window: NSWindow?
@@ -281,8 +398,16 @@ final class NativeEditorHarness {
             hasEditorSelection: Binding(get: { model.hasEditorSelection }, set: { model.hasEditorSelection = $0 }),
             documentID: UUID(),
             themeVars: themeVars,
-            controller: controller
+            controller: controller,
+            showsLineNumbers: model.showsLineNumbers
         )
+    }
+
+    /// Draws the window now, so the gutter's drawing code runs.
+    func display() {
+        window?.layoutIfNeeded()
+        window?.contentView?.needsDisplay = true
+        window?.displayIfNeeded()
     }
 
     /// AppKit groups undo by event. Hosted tests get no events, so each

@@ -16,6 +16,8 @@ struct NativeEditorView: NSViewRepresentable {
     var documentID: UUID
     var themeVars: [String: String]
     var controller: EditorController
+    /// View › Show Line Numbers (#76), applied live.
+    var showsLineNumbers: Bool = true
 
     static let editDebounceNanoseconds: UInt64 = 200_000_000
     static let placeholder = "Start typing Markdown. ⌘V turns rich text into Markdown."
@@ -50,11 +52,13 @@ struct NativeEditorView: NSViewRepresentable {
         private var isBindingSyncPending = false
         private var debounceTask: Task<Void, Never>?
         private var viewportScheduled = false
-        private var lineStarts: [Int]?
+        private var lines: LineNumbering?
+        private(set) var gutter: NativeEditorGutter
 
         init(parent: NativeEditorView) {
             self.parent = parent
             theme = NativeEditorTheme(vars: parent.themeVars)
+            gutter = NativeEditorGutter(isVisible: parent.showsLineNumbers, theme: theme)
             lastEditorText = parent.text
             super.init()
         }
@@ -100,6 +104,7 @@ struct NativeEditorView: NSViewRepresentable {
             textView.editorCoordinator = self
             self.textView = textView
             self.scrollView = scrollView
+            gutter.digits = LineNumbering.digits(forLineCount: lineNumbering(of: parent.text).count)
             applyTheme(to: textView)
             // The opening text is not an edit: no undo step.
             textView.textStorage?.setAttributedString(NSAttributedString(string: parent.text, attributes: theme.baseAttributes))
@@ -120,6 +125,8 @@ struct NativeEditorView: NSViewRepresentable {
             }
             scrollView.contentView.postsBoundsChangedNotifications = true
             center.addObserver(self, selector: #selector(boundsChanged(_:)), name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
+            textView.postsFrameChangedNotifications = true
+            center.addObserver(self, selector: #selector(frameChanged(_:)), name: NSView.frameDidChangeNotification, object: textView)
             return scrollView
         }
 
@@ -128,10 +135,15 @@ struct NativeEditorView: NSViewRepresentable {
             let next = NativeEditorTheme(vars: parent.themeVars)
             if next != theme, let textView {
                 theme = next
+                gutter.theme = next
                 applyTheme(to: textView)
                 restyleAll(textView)
                 highlighter?.theme = next
                 highlighter?.highlightNow()
+            }
+            if parent.showsLineNumbers != gutter.isVisible, let textView {
+                gutter.isVisible = parent.showsLineNumbers
+                applyGutterInsets(to: textView)
             }
             guard let textView, parent.text != lastEditorText, !isBindingSyncPending, !isApplyingRemoteEdit else { return }
             replaceAll(with: parent.text, in: textView)
@@ -162,7 +174,7 @@ struct NativeEditorView: NSViewRepresentable {
             }
             textView.breakUndoCoalescing()
             lastEditorText = text
-            lineStarts = nil
+            linesDidChange()
             textView.setSelectedRange(NSRange(location: 0, length: 0))
             highlighter?.highlightNow()
         }
@@ -174,8 +186,7 @@ struct NativeEditorView: NSViewRepresentable {
             textView.selectedTextAttributes = [.backgroundColor: theme.selection]
             textView.defaultParagraphStyle = theme.paragraphStyle
             textView.typingAttributes = theme.baseAttributes
-            let insets = theme.insets
-            textView.textContainerInset = NSSize(width: insets.horizontal, height: insets.top)
+            applyGutterInsets(to: textView)
             // NSTextView draws `placeholderAttributedString` while it is empty.
             guard textView.responds(to: NSSelectorFromString("setPlaceholderAttributedString:")) else { return }
             textView.setValue(
@@ -205,7 +216,7 @@ struct NativeEditorView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             guard let textView else { return }
-            lineStarts = nil
+            linesDidChange()
             highlighter?.textDidChange()
             let newText = textView.string
             lastEditorText = newText
@@ -255,9 +266,46 @@ struct NativeEditorView: NSViewRepresentable {
             }
         }
 
+        // MARK: Line numbers (#76)
+
+        /// Everything left of the text, 0 with the gutter hidden.
+        var gutterWidth: CGFloat { gutter.width }
+
+        /// Logical lines of `text`, cached until the next edit.
+        func lineNumbering(of text: String) -> LineNumbering {
+            if let lines { return lines }
+            let computed = LineNumbering(text)
+            lines = computed
+            return computed
+        }
+
+        /// After an edit: the numbers below it may change, and the gutter widens
+        /// only when the line count gains a digit.
+        private func linesDidChange() {
+            lines = nil
+            guard let textView else { return }
+            let digits = LineNumbering.digits(forLineCount: lineNumbering(of: textView.string).count)
+            if digits != gutter.digits {
+                gutter.digits = digits
+                applyGutterInsets(to: textView)
+            } else {
+                invalidateGutter()
+            }
+        }
+
+        private func applyGutterInsets(to textView: NSTextView) {
+            textView.textContainerInset = NSSize(width: gutter.containerInsetWidth, height: theme.insets.top)
+            textView.needsDisplay = true
+        }
+
+        @objc private func frameChanged(_ notification: Notification) {
+            invalidateGutter()
+        }
+
         // MARK: Scroll sync (ADR-0006)
 
         @objc private func boundsChanged(_ notification: Notification) {
+            invalidateGutter()
             // At most one report per pass of the run loop: scroll events arrive
             // once per frame, so this matches `reportViewport` in editor.js
             // (requestAnimationFrame) without a display link to manage.
@@ -286,7 +334,7 @@ struct NativeEditorView: NSViewRepresentable {
             let offset = contentManager.offset(from: layoutManager.documentRange.location, to: fragment.rangeInElement.location)
             let frame = fragment.layoutFragmentFrame
             let fraction = min(1, max(0, (y - frame.minY) / max(1, frame.height)))
-            return EditorViewport(topLine: line(atUTF16: offset, in: textView.string), fraction: fraction)
+            return EditorViewport(topLine: lineNumbering(of: textView.string).line(atUTF16: offset), fraction: fraction)
         }
 
         /// Scrolls so `line` (1-based) is at the top. Tests and the debug soak use it.
@@ -295,8 +343,7 @@ struct NativeEditorView: NSViewRepresentable {
                   let layoutManager = textView.textLayoutManager,
                   let contentManager = layoutManager.textContentManager
             else { return }
-            let starts = lineStartOffsets(textView.string)
-            let offset = starts[min(max(line - 1, 0), starts.count - 1)]
+            let offset = lineNumbering(of: textView.string).start(ofLine: line)
             guard let location = contentManager.location(layoutManager.documentRange.location, offsetBy: offset),
                   let range = NSTextRange(location: layoutManager.documentRange.location, end: location)
             else { return }
@@ -304,35 +351,6 @@ struct NativeEditorView: NSViewRepresentable {
             textView.sizeToFit()
             guard let fragment = layoutManager.textLayoutFragment(for: location) else { return }
             textView.scroll(NSPoint(x: 0, y: fragment.layoutFragmentFrame.minY + textView.textContainerOrigin.y))
-        }
-
-        private func line(atUTF16 offset: Int, in text: String) -> Int {
-            let starts = lineStartOffsets(text)
-            var low = 0, high = starts.count - 1
-            while low < high {
-                let mid = (low + high + 1) / 2
-                if starts[mid] <= offset { low = mid } else { high = mid - 1 }
-            }
-            return low + 1
-        }
-
-        /// UTF-16 offsets where each line starts (`\n`, `\r\n` or `\r`), cached until the next edit.
-        private func lineStartOffsets(_ text: String) -> [Int] {
-            if let lineStarts { return lineStarts }
-            var starts = [0]
-            var offset = 0
-            var previousCR = false
-            for unit in text.utf16 {
-                offset += 1
-                if unit == 0x0A {
-                    if previousCR { starts[starts.count - 1] = offset } else { starts.append(offset) }
-                } else if unit == 0x0D {
-                    starts.append(offset)
-                }
-                previousCR = unit == 0x0D
-            }
-            lineStarts = starts
-            return starts
         }
     }
 }
