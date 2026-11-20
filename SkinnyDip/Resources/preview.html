@@ -75,6 +75,22 @@
       }
     };
 
+    // Tints the top-level block the Editor's caret is in. The class lives only in
+    // this page; copies map back to Markdown, so it never reaches the clipboard.
+    let highlightLine = null;
+    function applyHighlight() {
+      const content = document.getElementById("content");
+      content.querySelectorAll(":scope > .current-block").forEach((el) => el.classList.remove("current-block"));
+      if (highlightLine == null) return;
+      const anchor = anchors.find((a) => a.line === highlightLine && a.el.parentElement === content);
+      if (anchor) anchor.el.classList.add("current-block");
+    }
+
+    window.highlightBlock = (line) => {
+      highlightLine = line == null ? null : Number(line);
+      applyHighlight();
+    };
+
     window.setScrollSync = (on) => {
       scrollSync = !!on;
     };
@@ -165,6 +181,7 @@
         hljs.highlightElement(block);
       });
       cacheAnchors();
+      applyHighlight();
       if (scrollSync && html && html.trim()) {
         window.syncToLine(lastLine, lastFraction);
       } else if (!scrollSync) {

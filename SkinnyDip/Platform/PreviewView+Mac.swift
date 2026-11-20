@@ -15,6 +15,8 @@ struct PreviewView: NSViewRepresentable {
     var scrollSync: Bool
     var syncActive: Bool
     var viewport: EditorViewport
+    /// The `data-source-line` of the block the Editor's caret is in, tinted in the Preview.
+    var highlightLine: Int? = nil
     /// Nil while the Preview doesn't have focus, otherwise whether it has a selection.
     var onCopyStateChange: ((Bool?) -> Void)? = nil
 
@@ -51,6 +53,7 @@ struct PreviewView: NSViewRepresentable {
         context.coordinator.scrollSync = scrollSync
         context.coordinator.syncActive = syncActive
         context.coordinator.viewport = viewport
+        context.coordinator.highlightLine = highlightLine
         guard context.coordinator.isReady else { return }
         Task { @MainActor in
             await context.coordinator.pushChrome()
@@ -73,6 +76,8 @@ struct PreviewView: NSViewRepresentable {
         var scrollSync = true
         var syncActive = true
         var viewport = EditorViewport(topLine: 1, fraction: 0)
+        var highlightLine: Int?
+        private var appliedHighlight: Int??
         private var appliedTheme: [String: String] = [:]
         private var appliedZoom = -1.0
         private var appliedSync: Bool?
@@ -109,6 +114,14 @@ struct PreviewView: NSViewRepresentable {
                 _ = try? await webView.callAsyncJavaScript(
                     "setZoom(zoom)",
                     arguments: ["zoom": zoom],
+                    contentWorld: .page
+                )
+            }
+            if appliedHighlight != .some(highlightLine) {
+                appliedHighlight = .some(highlightLine)
+                _ = try? await webView.callAsyncJavaScript(
+                    "highlightBlock(line)",
+                    arguments: ["line": highlightLine.map { $0 as Any } ?? NSNull()],
                     contentWorld: .page
                 )
             }
