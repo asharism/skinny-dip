@@ -27,6 +27,8 @@ final class NativeEditorTextView: NSTextView, EditorResponder {
 
     func insertMarkdownFromPasteboard(plain: Bool) {
         let contents = pasteboard.pasteContents
+        // A URL over a selection links it (#94); paste plain never does.
+        if !plain, let url = MarkdownEditing.linkURL(in: contents), perform({ MarkdownEditing.pasteLink($0, url: url) }) { return }
         let text = plain ? PasteAsMarkdown.plainText(for: contents) : PasteAsMarkdown.text(for: contents)
         guard let text else { return }
         insertAsOneUndoStep(text)

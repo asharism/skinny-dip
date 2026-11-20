@@ -17,6 +17,8 @@ struct FormatCommands: Commands {
             // Wrap: ⌘B ⌘I (#93)
 
             // Links: ⌘K (#94)
+            Button("Link") { send(#selector(NativeEditorTextView.skinnyDipInsertLink(_:))) }
+                .keyboardShortcut("k")
 
             // Indent: ⌘] ⌘[ (#91)
 
