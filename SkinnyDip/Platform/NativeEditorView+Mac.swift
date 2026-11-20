@@ -161,6 +161,9 @@ struct NativeEditorView: NSViewRepresentable {
             highlighter?.highlightNow()
         }
 
+        /// The theme's plain-text attributes, for text the editor inserts itself.
+        var baseAttributes: [NSAttributedString.Key: Any] { theme.baseAttributes }
+
         /// An outside change (Scratch restore, a reload): one undoable edit.
         private func replaceAll(with text: String, in textView: NativeEditorTextView) {
             isApplyingRemoteEdit = true

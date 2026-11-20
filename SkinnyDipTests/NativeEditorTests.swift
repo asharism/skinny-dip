@@ -86,6 +86,111 @@ struct NativeEditorTests {
         #expect(harness.textView.string == "# Notes\n\n* starred_item\n")
     }
 
+    // MARK: Editing Commands (ADR-0012)
+
+    /// An Editing Command is one undo step, and undo puts back the selection
+    /// it started from, not just the text. Typing just before it stays its own step.
+    @Test func applyIsOneUndoStepAndRestoresSelection() throws {
+        let harness = NativeEditorHarness(text: "- a\nnext 👋🏽")
+        defer { harness.teardown() }
+        let textView = harness.textView!
+        let undoManager = try #require(textView.undoManager)
+
+        textView.setSelectedRange(NSRange(location: 3, length: 0))
+        harness.event { textView.insertText("b", replacementRange: textView.selectedRange()) }
+        textView.setSelectedRange(NSRange(location: 1, length: 2))
+        #expect(textView.editorState == EditorState(text: "- ab\nnext 👋🏽", selection: 1..<3))
+
+        let edit = TextEdit(range: 4..<4, replacement: "\n- ", selection: 7..<7)
+        harness.event { textView.apply(edit) }
+        #expect(textView.string == "- ab\n- \nnext 👋🏽")
+        #expect(textView.selectedRange() == NSRange(location: 7, length: 0))
+        // The theme's base attributes, not whatever the caret was sitting on.
+        let font = textView.textStorage?.attribute(.font, at: 5, effectiveRange: nil) as? NSFont
+        #expect(font == NativeEditorTheme(vars: harness.themeVars).font)
+
+        undoManager.undo()
+        #expect(textView.string == "- ab\nnext 👋🏽")
+        #expect(textView.selectedRange() == NSRange(location: 1, length: 2))
+
+        undoManager.redo()
+        #expect(textView.string == "- ab\n- \nnext 👋🏽")
+        #expect(textView.selectedRange() == NSRange(location: 7, length: 0))
+
+        // Undo twice: the command, then the typed "b".
+        undoManager.undo()
+        undoManager.undo()
+        #expect(textView.string == "- a\nnext 👋🏽")
+
+        // Replacing text away from the selection (an outdent): undo still
+        // lands on the selection the command saw, and redo on the one it set.
+        textView.setSelectedRange(NSRange(location: 4, length: 4))
+        let outdent = TextEdit(range: 0..<2, replacement: "", selection: 0..<0)
+        harness.event { textView.apply(outdent) }
+        #expect(textView.string == "a\nnext 👋🏽")
+        undoManager.undo()
+        #expect(textView.string == "- a\nnext 👋🏽")
+        #expect(textView.selectedRange() == NSRange(location: 4, length: 4))
+        undoManager.redo()
+        #expect(textView.selectedRange() == NSRange(location: 0, length: 0))
+        undoManager.undo()
+
+        // An edit that swallows the selection (moving a line): same again.
+        textView.setSelectedRange(NSRange(location: 5, length: 2))
+        let move = TextEdit(range: 0..<13, replacement: "next 👋🏽\n- a", selection: 1..<3)
+        harness.event { textView.apply(move) }
+        #expect(textView.string == "next 👋🏽\n- a")
+        undoManager.undo()
+        #expect(textView.string == "- a\nnext 👋🏽")
+        #expect(textView.selectedRange() == NSRange(location: 5, length: 2))
+        undoManager.redo()
+        #expect(textView.string == "next 👋🏽\n- a")
+        #expect(textView.selectedRange() == NSRange(location: 1, length: 2))
+    }
+
+    /// A selection-only command (⌘L) moves the selection and leaves no undo step.
+    @Test func selectionOnlyEditAddsNoUndoStep() {
+        let harness = NativeEditorHarness(text: "one\ntwo")
+        defer { harness.teardown() }
+        harness.textView.setSelectedRange(NSRange(location: 1, length: 0))
+        #expect(harness.textView.perform { _ in .select(0..<4) })
+        #expect(harness.textView.selectedRange() == NSRange(location: 0, length: 4))
+        #expect(harness.textView.undoManager?.canUndo == false)
+    }
+
+    /// With several selections, marked text, or a command that declines,
+    /// `perform` returns false so the caller falls through to AppKit.
+    @Test func performFallsThroughWithMultipleSelections() {
+        let harness = NativeEditorHarness(text: "one two")
+        defer { harness.teardown() }
+        let textView = harness.textView!
+        var calls = 0
+        let command: (EditorState) -> TextEdit? = { state in
+            calls += 1
+            return TextEdit(range: state.selection, replacement: "X", selection: state.selection.lowerBound ..< state.selection.lowerBound + 1)
+        }
+
+        textView.selectedRanges = [NSValue(range: NSRange(location: 0, length: 1)), NSValue(range: NSRange(location: 4, length: 1))]
+        #expect(textView.selectedRanges.count == 2)
+        #expect(textView.editorState == nil)
+        #expect(!textView.perform(command))
+        #expect(calls == 0)
+        #expect(textView.string == "one two")
+
+        textView.setSelectedRange(NSRange(location: 3, length: 0))
+        harness.event { textView.setMarkedText("k", selectedRange: NSRange(location: 1, length: 0), replacementRange: textView.selectedRange()) }
+        #expect(textView.hasMarkedText())
+        #expect(textView.editorState == nil)
+        #expect(!textView.perform(command))
+        harness.event { textView.unmarkText() }
+
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        let before = textView.string
+        #expect(!textView.perform { _ in nil })
+        #expect(textView.string == before)
+        #expect(calls == 0)
+    }
+
     @Test func highlightingAddsNoUndoAndNoEdit() async throws {
         let harness = NativeEditorHarness(text: "# Heading\n\nSome *soft* text\n")
         defer { harness.teardown() }

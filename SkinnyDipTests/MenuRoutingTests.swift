@@ -35,6 +35,17 @@ struct MenuRoutingTests {
         #expect(CopyCommands.redoSelector == NSSelectorFromString("skinnyDipRedo:"))
     }
 
+    // MARK: ADR-0012 Format menu
+
+    /// The Format menu is installed for the Editing Commands, and hidden only
+    /// while no feature has added an item to it.
+    @Test func formatMenuIsInstalledAndHiddenWhileEmpty() throws {
+        let item = try #require(NSApp.mainMenu?.items.first { $0.title == FormatCommands.menuTitle })
+        let menu = try #require(item.submenu)
+        FormatCommands.hideWhileEmpty()
+        #expect(item.isHidden == menu.items.isEmpty)
+    }
+
     // MARK: ADR-0011 copy commands
 
     @Test func editMenuHasPlainCopyRichTextAndHTMLButNoCopyAsMarkdown() throws {
