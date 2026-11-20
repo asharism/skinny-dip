@@ -21,6 +21,18 @@ struct FormatCommands: Commands {
             // Indent: ⌘] ⌘[ (#91)
 
             // Lines: ⌥↑ ⌥↓ ⇧⌥↑ ⇧⌥↓ ⌘⇧K ⌘L (#92)
+            Button("Move Line Up") { send(#selector(NativeEditorTextView.moveLinesUp(_:))) }
+                .keyboardShortcut(.upArrow, modifiers: .option)
+            Button("Move Line Down") { send(#selector(NativeEditorTextView.moveLinesDown(_:))) }
+                .keyboardShortcut(.downArrow, modifiers: .option)
+            Button("Duplicate Line Up") { send(#selector(NativeEditorTextView.duplicateLinesUp(_:))) }
+                .keyboardShortcut(.upArrow, modifiers: [.option, .shift])
+            Button("Duplicate Line Down") { send(#selector(NativeEditorTextView.duplicateLinesDown(_:))) }
+                .keyboardShortcut(.downArrow, modifiers: [.option, .shift])
+            Button("Delete Line") { send(#selector(NativeEditorTextView.deleteLines(_:))) }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+            Button("Select Line") { send(#selector(NSResponder.selectLine(_:))) }
+                .keyboardShortcut("l")
         }
     }
 
