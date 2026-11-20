@@ -12,6 +12,10 @@ _Avoid_: raw text, plain text, model
 The live rendering of the Markdown Source in its own Card, showing the structure Copy as Rich Text will paste, in Skinny's own theme rather than the destination's.
 _Avoid_: viewer, render pane
 
+**Editing Command**:
+An edit the user asked for with a key or menu item that inserts or removes Markdown syntax on the lines the selection touches; never automatic (ADR-0012).
+_Avoid_: auto-format, smart edit
+
 ## Window
 
 **Window**:

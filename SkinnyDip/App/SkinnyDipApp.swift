@@ -92,6 +92,7 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
         }
         EditorSpellCheck.warmUp()
         AppWritingTools.installMainMenuWritingTools()
+        FormatCommands.hideWhileEmpty()
         didFinishLaunch = true
         _ = AppUpdater.shared
         #if DEBUG
@@ -102,6 +103,7 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         AppWritingTools.installMainMenuWritingTools()
+        FormatCommands.hideWhileEmpty()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -140,6 +142,7 @@ struct SkinnyDipApp: App {
         .windowStyle(.hiddenTitleBar)
         .commands {
             CopyCommands()
+            FormatCommands()
             TabCommands()
             DocumentCommands()
             ViewCommands()
