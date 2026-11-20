@@ -106,6 +106,21 @@ extension MenuRoutingTests {
         }
     }
 
+    /// The focused editor leaves ⌘? (⇧⌘/) to the Help menu's search.
+    @Test func editorLeavesTheHelpShortcutToTheMenu() throws {
+        let harness = NativeEditorHarness(text: "a\nb")
+        defer { harness.teardown() }
+        let textView = try harness.focus()
+        let window = try #require(textView.window)
+        let event = try #require(NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [.command, .shift], timestamp: 0,
+            windowNumber: window.windowNumber, context: nil, characters: "?",
+            charactersIgnoringModifiers: "?", isARepeat: false, keyCode: 44
+        ))
+        #expect(!window.performKeyEquivalent(with: event))
+        #expect(textView.string == "a\nb")
+    }
+
     /// Unfocused, the editor leaves ⌥↓ alone, so it never acts on a hidden selection.
     @Test func lineCommandShortcutsNeedEditorFocus() throws {
         let harness = NativeEditorHarness(text: "a\nb")
