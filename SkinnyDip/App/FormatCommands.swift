@@ -15,12 +15,37 @@ struct FormatCommands: Commands {
     var body: some Commands {
         CommandMenu(Self.menuTitle) {
             // Wrap: ⌘B ⌘I (#93)
+            Button("Bold") { send(WrapCommands.boldSelector) }
+                .keyboardShortcut("b")
+            Button("Italic") { send(WrapCommands.italicSelector) }
+                .keyboardShortcut("i")
 
             // Links: ⌘K (#94)
+            Divider()
+            Button("Link") { send(#selector(NativeEditorTextView.skinnyDipInsertLink(_:))) }
+                .keyboardShortcut("k")
 
             // Indent: ⌘] ⌘[ (#91)
+            Divider()
+            Button("Indent") { send(#selector(NativeEditorTextView.skinnyDipIndent(_:))) }
+                .keyboardShortcut("]", modifiers: .command)
+            Button("Outdent") { send(#selector(NativeEditorTextView.skinnyDipOutdent(_:))) }
+                .keyboardShortcut("[", modifiers: .command)
 
             // Lines: ⌥↑ ⌥↓ ⇧⌥↑ ⇧⌥↓ ⌘⇧K ⌘L (#92)
+            Divider()
+            Button("Move Line Up") { send(#selector(NativeEditorTextView.moveLinesUp(_:))) }
+                .keyboardShortcut(.upArrow, modifiers: .option)
+            Button("Move Line Down") { send(#selector(NativeEditorTextView.moveLinesDown(_:))) }
+                .keyboardShortcut(.downArrow, modifiers: .option)
+            Button("Duplicate Line Up") { send(#selector(NativeEditorTextView.duplicateLinesUp(_:))) }
+                .keyboardShortcut(.upArrow, modifiers: [.option, .shift])
+            Button("Duplicate Line Down") { send(#selector(NativeEditorTextView.duplicateLinesDown(_:))) }
+                .keyboardShortcut(.downArrow, modifiers: [.option, .shift])
+            Button("Delete Line") { send(#selector(NativeEditorTextView.deleteLines(_:))) }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+            Button("Select Line") { send(#selector(NSResponder.selectLine(_:))) }
+                .keyboardShortcut("l")
         }
     }
 
