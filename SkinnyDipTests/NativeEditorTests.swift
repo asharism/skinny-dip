@@ -206,6 +206,33 @@ struct NativeEditorTests {
         #expect(harness.model.textWrites == 0)
     }
 
+    /// A pass sets only attributes that differ. Any attribute change throws
+    /// away TextKit 2's layout for its range, and recoloring the whole document
+    /// blanked the bottom of long files after each pause in typing.
+    @Test func highlightingTouchesOnlyWhatChanged() throws {
+        let block = "## Head\n\nSome **bold** and *it* with `code`.\n\n"
+        let harness = NativeEditorHarness(text: String(repeating: block, count: 50))
+        defer { harness.teardown() }
+        let storage = try #require(harness.textView.textStorage)
+        harness.coordinator.highlightNow()
+
+        var edited: [NSRange] = []
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSTextStorage.didProcessEditingNotification, object: storage, queue: nil
+        ) { _ in edited.append(storage.editedRange) }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        harness.coordinator.highlightNow()
+        #expect(edited.isEmpty)
+
+        // Typing "**" at the end makes only the new text a marker.
+        storage.append(NSAttributedString(string: "**x**", attributes: harness.coordinator.baseAttributes))
+        edited = []
+        harness.coordinator.highlightNow()
+        #expect(edited.count == 1)
+        #expect((edited.first?.location ?? 0) >= storage.length - 5)
+    }
+
     /// Bold and italic are display-only: they follow the parse, so a run that
     /// stops being `**strong**` goes back to Regular, and the text never changes.
     @Test func highlightingSetsBoldAndItalic() throws {

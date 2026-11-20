@@ -8,6 +8,12 @@ import MarkdownCore
 /// italic traits, directly on the text storage, so it never adds undo steps or
 /// marks the document edited. The approach follows Silica's
 /// `SyntaxHighlighter` (MIT).
+///
+/// It sets an attribute only where it differs from what the storage already
+/// has. TextKit 2 throws away layout for every range whose attributes change,
+/// and a whole-document pass after each pause in typing left the visible
+/// fragments at estimated positions in long files: the bottom of the text,
+/// the caret line and the gutter numbers blanked until the next scroll.
 @MainActor
 final class NativeHighlighter {
     private weak var textView: NSTextView?
@@ -37,7 +43,8 @@ final class NativeHighlighter {
         if storage.length <= Self.synchronousLength {
             generation += 1
             pending?.cancel()
-            apply(highlightSpans(in: storage.string))
+            let text = storage.string
+            apply(highlightRuns(for: highlightSpans(in: text), length: (text as NSString).length))
         } else {
             schedule(after: .zero)
         }
@@ -56,11 +63,11 @@ final class NativeHighlighter {
                 try? await Task.sleep(for: delay)
             }
             guard !Task.isCancelled, let text = self?.snapshot() else { return }
-            let spans = await Task.detached(priority: .userInitiated) {
-                highlightSpans(in: text)
+            let runs = await Task.detached(priority: .userInitiated) {
+                highlightRuns(for: highlightSpans(in: text), length: (text as NSString).length)
             }.value
             guard !Task.isCancelled, let self, expected == self.generation else { return }
-            self.apply(spans)
+            self.apply(runs)
         }
     }
 
@@ -69,7 +76,7 @@ final class NativeHighlighter {
         return String(storage.string)
     }
 
-    private func apply(_ spans: [HighlightSpan]) {
+    private func apply(_ runs: [HighlightRun]) {
         guard let textView, let storage = textView.textStorage else { return }
         // Recoloring under IME composition would disturb the marked text.
         if textView.hasMarkedText() {
@@ -77,33 +84,28 @@ final class NativeHighlighter {
             return
         }
         let length = storage.length
-        storage.beginEditing()
-        storage.addAttribute(.foregroundColor, value: theme.foreground, range: NSRange(location: 0, length: length))
-        for span in spans where NSMaxRange(span.range) <= length {
-            storage.addAttribute(.foregroundColor, value: theme.color(for: span.role), range: span.range)
+        guard runs.last.map({ NSMaxRange($0.range) }) ?? 0 == length else {
+            // The text changed since the parse; the next pass catches up.
+            schedule(after: Self.editDelay)
+            return
         }
-        // Back to Regular only where a run is styled, so unstyled text isn't laid out again.
-        let regular = theme.font
-        storage.enumerateAttribute(.font, in: NSRange(location: 0, length: length)) { value, run, _ in
-            if (value as? NSFont) != regular { storage.addAttribute(.font, value: regular, range: run) }
+        var editing = false
+        func set(_ key: NSAttributedString.Key, _ value: Any, _ range: NSRange) {
+            if !editing { storage.beginEditing(); editing = true }
+            storage.addAttribute(key, value: value, range: range)
         }
-        for span in spans where NSMaxRange(span.range) <= length {
-            switch span.role {
-            case .heading, .strong: addTraits(bold: true, italic: false, in: span.range, of: storage)
-            case .emphasis: addTraits(bold: false, italic: true, in: span.range, of: storage)
-            default: break
+        let fonts = [false, true].flatMap { bold in [false, true].map { theme.font(bold: bold, italic: $0) } }
+        for run in runs {
+            let color = run.color.map { theme.color(for: $0) } ?? theme.foreground
+            let font = fonts[(run.bold ? 2 : 0) + (run.italic ? 1 : 0)]
+            storage.enumerateAttribute(.foregroundColor, in: run.range) { value, range, _ in
+                if (value as? NSColor) != color { set(.foregroundColor, color, range) }
+            }
+            storage.enumerateAttribute(.font, in: run.range) { value, range, _ in
+                if (value as? NSFont) != font { set(.font, font, range) }
             }
         }
-        storage.endEditing()
-    }
-
-    /// Adds traits to each run's font, so `***both***` ends up Bold Italic.
-    private func addTraits(bold: Bool, italic: Bool, in range: NSRange, of storage: NSTextStorage) {
-        storage.enumerateAttribute(.font, in: range) { value, run, _ in
-            let traits = (value as? NSFont)?.fontDescriptor.symbolicTraits ?? []
-            let font = theme.font(bold: bold || traits.contains(.bold), italic: italic || traits.contains(.italic))
-            storage.addAttribute(.font, value: font, range: run)
-        }
+        if editing { storage.endEditing() }
     }
 }
 #endif
