@@ -14,6 +14,15 @@ public actor MarkdownParser {
         options: RenderOptions,
         deliver: @escaping @Sendable @MainActor (String) -> Void
     ) {
+        render(source: source, options: options) { render in deliver(render.html) }
+    }
+
+    /// Like `update`, but also delivers the top-level block lines of the same source.
+    public func render(
+        source: String,
+        options: RenderOptions,
+        deliver: @escaping @Sendable @MainActor (PreviewRender) -> Void
+    ) {
         renderTask?.cancel()
         let delay = debounceNanoseconds
         renderTask = Task {
@@ -23,11 +32,11 @@ public actor MarkdownParser {
                 return
             }
             guard !Task.isCancelled else { return }
-            let html = await Task.detached(priority: .userInitiated) {
-                PreviewHTML.render(source, options: options)
+            let render = await Task.detached(priority: .userInitiated) {
+                PreviewRender(html: PreviewHTML.render(source, options: options), blocks: PreviewBlocks(source: source))
             }.value
             guard !Task.isCancelled else { return }
-            await deliver(html)
+            await deliver(render)
         }
     }
 }

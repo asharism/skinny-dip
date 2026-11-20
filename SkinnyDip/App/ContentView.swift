@@ -304,6 +304,7 @@ struct ContentView: View {
                 scrollSync: scrollSync,
                 syncActive: showPreview && zoomed == nil,
                 viewport: editor.viewport,
+                highlightLine: currentBlockLine,
                 onCopyStateChange: { previewCopyState = $0 }
             )
         } footer: {
@@ -335,6 +336,12 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .editorMenuWillOpen)) { _ in
             refreshPasteboardMenuState()
         }
+    }
+
+    /// The `data-source-line` of the top-level block the caret is in; the Preview tints it.
+    private var currentBlockLine: Int? {
+        let line = TextPosition.lineColumn(in: document.source, utf16Offset: editor.cursorUTF16).line
+        return previewState.blocks.blockLine(containing: line)
     }
 
     private var editorFooter: some View {

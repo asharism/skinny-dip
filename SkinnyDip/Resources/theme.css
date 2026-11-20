@@ -14,6 +14,7 @@
   --border2: rgba(0, 0, 0, 0.16);
   --code-bg: rgba(0, 0, 0, 0.05);
   --cursor: #a84d26;
+  --current-block: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 
 html {
@@ -39,6 +40,13 @@ body {
 main {
   max-width: 48rem;
   margin: 0 auto;
+}
+
+/* The block the Editor's caret is in. Shadow and background only, so nothing moves. */
+#content > .current-block {
+  background-color: var(--current-block);
+  box-shadow: 0 0 0 0.5em var(--current-block);
+  border-radius: 0.2em;
 }
 
 .placeholder {
@@ -174,6 +182,7 @@ img {
     --border: #bbb !important;
     --border2: #888 !important;
     --code-bg: #f2f2f2 !important;
+    --current-block: transparent !important;
   }
 
   html, body {
