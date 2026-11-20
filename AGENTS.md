@@ -24,9 +24,10 @@ swift test --package-path Packages/MarkdownCore --filter GoldenTests
 # Generate the Xcode project (needs `brew install xcodegen`)
 xcodegen generate
 
-# Build the app and run the scheme's tests (MarkdownCoreTests and SkinnyDipTests)
-xcodebuild build -scheme SkinnyDip -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/xcode
-xcodebuild test -scheme SkinnyDip -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/xcode
+# Build the app and run the scheme's tests (MarkdownCoreTests and SkinnyDipTests),
+# under a separate bundle ID so the user's Scratch Documents are untouched (see Agent ownership)
+xcodebuild build -scheme SkinnyDip -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/agent PRODUCT_BUNDLE_IDENTIFIER=com.hitesh.SkinnyDipAgent
+xcodebuild test -scheme SkinnyDip -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/agent PRODUCT_BUNDLE_IDENTIFIER=com.hitesh.SkinnyDipAgent
 
 # Release: test, build, sign, tag vX.Y.Z, publish a GitHub Release + Sparkle appcast (ADR-0009)
 scripts/release.sh 0.2.0
@@ -69,7 +70,14 @@ Packages/MarkdownCore/
 
 ## Agent ownership
 
-**Agents own building the app end-to-end.** Implement features, fix bugs, run `xcodegen`, `xcodebuild`, and tests, and **launch the app locally** when a change needs review. Before asking anyone to verify editor behavior, run `xcodebuild test … -only-testing:SkinnyDipTests/NativeEditorTests` (the native editor in a real window: text and selection, paste, copy, undo, highlighting, gutter). Do not hand work back with “you verify” as the default next step. If automation cannot cover something (Writing Tools sheet UI, live dictation audio, paste matrix), exercise the built app yourself first; only ask the user for product decisions or blocked credentials/hardware.
+**Agents own building the app end-to-end.** Implement features, fix bugs, run `xcodegen`, `xcodebuild`, and tests, and **launch the app locally** when a change needs review. Before asking anyone to verify editor behavior, run `xcodebuild test … -derivedDataPath .build/agent PRODUCT_BUNDLE_IDENTIFIER=com.hitesh.SkinnyDipAgent -only-testing:SkinnyDipTests/NativeEditorTests` (the native editor in a real window: text and selection, paste, copy, undo, highlighting, gutter). Do not hand work back with “you verify” as the default next step. If automation cannot cover something (Writing Tools sheet UI, live dictation audio, paste matrix), exercise the built app yourself first; only ask the user for product decisions or blocked credentials/hardware.
+
+**Run your builds under a separate bundle ID.** The user usually has `/Applications/Skinny.app` open with real Scratch Documents in the sandbox container for `com.hitesh.SkinnyDip`. A Debug build or test host with that bundle ID shares the container and can overwrite them. So build, launch and test with `-derivedDataPath .build/agent PRODUCT_BUNDLE_IDENTIFIER=com.hitesh.SkinnyDipAgent`, which gets its own container (scratch files, defaults, saved state). `scripts/soak.sh` already does this.
+
+Driving that build from the terminal:
+- **Screenshots:** launch with `SKINNYDIP_SNAPSHOT=<path>.png`, using a path inside `~/Library/Containers/com.hitesh.SkinnyDipAgent/Data/tmp/`, since the sandbox can't see other temp folders. Create `<path>.png.trigger` to capture the key window, or `<path>.png.layout` to dump windows, Tabs and the strip to `<path>.png.layout.txt` (`DebugSnapshot+Mac.swift`). Screen capture doesn't work, and the snapshot timer doesn't fire mid-drag.
+- **Input:** synthetic CGEvent mouse drags reach the app. Synthetic keyboard input (osascript keystroke, `CGEvent.postToPid`) does not, so drive typing from inside the app (`DebugSoak+Mac.swift`, #62).
+- **Menus:** two processes are named Skinny, so target osascript menu clicks by `unix id`.
 
 Issue labels like `ready-for-human` describe repo triage, not permission to stop implementing. Prefer `ready-for-agent` work and drive it to green builds without delegating execution.
 
