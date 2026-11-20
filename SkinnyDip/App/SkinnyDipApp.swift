@@ -98,6 +98,7 @@ private final class SkinnyDipAppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         DebugSnapshot.installIfRequested()
         DebugSoak.installIfRequested()
+        DebugDrive.installIfRequested()
         #endif
     }
 

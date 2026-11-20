@@ -76,8 +76,7 @@ Packages/MarkdownCore/
 
 Driving that build from the terminal:
 - **Screenshots:** launch with `SKINNYDIP_SNAPSHOT=<path>.png`, using a path inside `~/Library/Containers/com.hitesh.SkinnyDipAgent/Data/tmp/`, since the sandbox can't see other temp folders. Create `<path>.png.trigger` to capture the key window, or `<path>.png.layout` to dump windows, Tabs and the strip to `<path>.png.layout.txt` (`DebugSnapshot+Mac.swift`). Screen capture doesn't work, and the snapshot timer doesn't fire mid-drag.
-- **Input:** synthetic CGEvent mouse drags reach the app. Synthetic keyboard input (osascript keystroke, `CGEvent.postToPid`) does not, so drive typing from inside the app (`DebugSoak+Mac.swift`, #62).
-- **Menus:** two processes are named Skinny, so target osascript menu clicks by `unix id`.
+- **Input and menus:** synthetic CGEvent mouse drags reach the app. Synthetic keyboard input and osascript menu clicks do not reach the editor, so run a JSON step script inside the app with `scripts/drive.sh <steps.json>` (menus, keys, selectors, snapshots; `DebugDrive+Mac.swift`). Format and limits: `.claude/skills/drive-app/SKILL.md`. Typing soaks use `DebugSoak+Mac.swift` (#62).
 
 Issue labels like `ready-for-human` describe repo triage, not permission to stop implementing. Prefer `ready-for-agent` work and drive it to green builds without delegating execution.
 
@@ -92,6 +91,14 @@ Issue labels like `ready-for-human` describe repo triage, not permission to stop
 - iOS editor (P6): how the native TextKit 2 editor carries over to iOS
 
 ## Agent skills
+
+### Project skills
+
+In `.claude/skills/` (Claude Code); other agents can read them as runbooks.
+
+- `release`: after "merged, cut a release". Checks merged PRs reached `main`, picks the version, runs `scripts/release.sh`, verifies the appcast.
+- `fanout-issues`: one worktree agent per `ready-for-agent` issue, PRs always based on `main`, integration test run, merge order.
+- `drive-app`: verify a change in the running app with `scripts/drive.sh` (menus, key equivalents, text and selection, snapshots).
 
 ### Issue tracker
 
