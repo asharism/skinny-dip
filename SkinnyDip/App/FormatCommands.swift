@@ -21,6 +21,7 @@ struct FormatCommands: Commands {
             // Indent: ⌘] ⌘[ (#91)
 
             // Lines: ⌥↑ ⌥↓ ⇧⌥↑ ⇧⌥↓ ⌘⇧K ⌘L (#92)
+            Divider()
             Button("Move Line Up") { send(#selector(NativeEditorTextView.moveLinesUp(_:))) }
                 .keyboardShortcut(.upArrow, modifiers: .option)
             Button("Move Line Down") { send(#selector(NativeEditorTextView.moveLinesDown(_:))) }
