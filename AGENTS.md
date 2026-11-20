@@ -92,6 +92,14 @@ Issue labels like `ready-for-human` describe repo triage, not permission to stop
 
 ## Agent skills
 
+### Project skills
+
+In `.claude/skills/` (Claude Code); other agents can read them as runbooks.
+
+- `release`: after "merged, cut a release". Checks merged PRs reached `main`, picks the version, runs `scripts/release.sh`, verifies the appcast.
+- `fanout-issues`: one worktree agent per `ready-for-agent` issue, PRs always based on `main`, integration test run, merge order.
+- `drive-app`: verify a change in the running app with `scripts/drive.sh` (menus, key equivalents, text and selection, snapshots).
+
 ### Issue tracker
 
 GitHub Issues in `asharism/skinny-dip`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.

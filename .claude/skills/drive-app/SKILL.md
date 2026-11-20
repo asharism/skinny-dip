@@ -57,4 +57,5 @@ Read the `text` of the `menu` step: `"a **word** b"` means the menu path worked.
 - No real keyboard: `key` builds an `NSEvent` and dispatches it in-process; text-input paths like dead keys, IME and key repeat are not covered.
 - No Writing Tools UI, no live dictation, no system dialogs.
 - The Preview takes focus but gets no clicks or drags; use CGEvent mouse drags from outside for those.
+- Undo groups never close between steps (they close at the end of a real event), so all of a script's edits form one group: Edit ▸ Undo shows as disabled and `undo:` reverts the whole script. Check undo in `NativeEditorTests`, not here.
 - Debug builds only: the hook is `#if DEBUG` (`SkinnyDip/Platform/DebugDrive+Mac.swift`).
