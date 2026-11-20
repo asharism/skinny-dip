@@ -271,6 +271,9 @@ final class PreviewWebView: WKWebView {
         if AppKeyboardShortcuts.performMainMenuShortcut(event) {
             return true
         }
+        if AppKeyboardShortcuts.isHelpSearch(event) {
+            return false
+        }
         // Only the focused Preview answers ⌘C; otherwise the Editor's copy runs.
         guard isFocused, event.type == .keyDown, event.modifierFlags.contains(.command),
               event.charactersIgnoringModifiers?.lowercased() == "c"

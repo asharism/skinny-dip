@@ -12,6 +12,15 @@ enum AppKeyboardShortcuts {
         return NSApp.sendAction(#selector(NSApplication.terminate(_:)), to: NSApp, from: NSApp)
     }
 
+    /// ⌘? (⇧⌘/) opens the Help menu's search. The focused Preview's WKWebView
+    /// claims it without running it, so the Preview leaves it to the menu bar.
+    static func isHelpSearch(_ event: NSEvent) -> Bool {
+        guard event.type == .keyDown else { return false }
+        let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        let key = event.charactersIgnoringModifiers
+        return (key == "?" || key == "/") && (flags == .command || flags == [.command, .shift])
+    }
+
     /// The Preview web view claims ⌘C itself so
     /// WebKit's styled copy never runs: ⌘C plain, ⌘⇧C rich text, ⌥⌘C HTML (ADR-0011).
     static func copyCommand(for event: NSEvent) -> CopyCommand? {

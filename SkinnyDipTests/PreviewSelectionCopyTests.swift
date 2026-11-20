@@ -173,6 +173,26 @@ struct PreviewSelectionCopyTests {
         #expect(pasteboard.data(forType: .html).map { String(decoding: $0, as: UTF8.self).contains("<li>") } == true)
     }
 
+    /// ⌘? (⇧⌘/) opens the Help menu's search. AppKit offers key equivalents to
+    /// every view before the menu bar, so the Preview must not claim it, focused or not.
+    @Test func previewLeavesTheHelpShortcutToTheMenu() async throws {
+        let webView = try await Self.loadedPreview()
+        let window = NSWindow(contentRect: webView.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = webView
+        window.makeKeyAndOrderFront(nil)
+        let event = try #require(NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [.command, .shift], timestamp: 0,
+            windowNumber: window.windowNumber, context: nil, characters: "?", charactersIgnoringModifiers: "?",
+            isARepeat: false, keyCode: 44
+        ))
+        window.makeFirstResponder(nil)
+        #expect(!webView.performKeyEquivalent(with: event))
+        #expect(window.makeFirstResponder(webView))
+        #expect(!webView.performKeyEquivalent(with: event))
+    }
+
     private static func select(_ webView: WKWebView, _ body: String) async throws {
         _ = try await webView.callAsyncJavaScript(
             "const range = document.createRange();\n\(body)\nconst s = getSelection(); s.removeAllRanges(); s.addRange(range);",
