@@ -15,6 +15,10 @@ struct FormatCommands: Commands {
     var body: some Commands {
         CommandMenu(Self.menuTitle) {
             // Wrap: ⌘B ⌘I (#93)
+            Button("Bold") { send(WrapCommands.boldSelector) }
+                .keyboardShortcut("b")
+            Button("Italic") { send(WrapCommands.italicSelector) }
+                .keyboardShortcut("i")
 
             // Links: ⌘K (#94)
 
