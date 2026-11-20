@@ -8,3 +8,4 @@ DerivedData/
 SkinnyDip/Info.plist
 node_modules/
 dist/
+.claude/worktrees/
