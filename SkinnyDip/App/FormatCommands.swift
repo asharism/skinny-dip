@@ -17,6 +17,7 @@ struct FormatCommands: Commands {
             // Wrap: ⌘B ⌘I (#93)
 
             // Links: ⌘K (#94)
+            Divider()
             Button("Link") { send(#selector(NativeEditorTextView.skinnyDipInsertLink(_:))) }
                 .keyboardShortcut("k")
 
