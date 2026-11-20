@@ -19,6 +19,10 @@ struct FormatCommands: Commands {
             // Links: ⌘K (#94)
 
             // Indent: ⌘] ⌘[ (#91)
+            Button("Indent") { send(#selector(NativeEditorTextView.skinnyDipIndent(_:))) }
+                .keyboardShortcut("]", modifiers: .command)
+            Button("Outdent") { send(#selector(NativeEditorTextView.skinnyDipOutdent(_:))) }
+                .keyboardShortcut("[", modifiers: .command)
 
             // Lines: ⌥↑ ⌥↓ ⇧⌥↑ ⇧⌥↓ ⌘⇧K ⌘L (#92)
         }
